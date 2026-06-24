@@ -1,0 +1,7 @@
+FROM ./gemma-3-1B-it-QAT-Q4_0.gguf
+TEMPLATE """<start_of_turn>user
+{{ .Prompt }}<end_of_turn>
+<start_of_turn>model
+{{ .Response }}"""
+PARAMETER stop "<end_of_turn>"
+PARAMETER temperature 0.4

@@ -1,0 +1,71 @@
+# ============================================================================
+# Kiwi - Offline Knowledge OS - Gitignore
+# Co-authored by Chatterbolic Solutions
+# ============================================================================
+
+# --- OS & System Files ---
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.sw?
+
+# --- IDE & Editor Configurations ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.user
+*.workspace
+.project
+.settings/
+
+# --- Node.js & Frontend ---
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+frontend/dist-ssr/
+frontend/.eslintcache
+frontend/vite.config.ts.timestamp-*
+
+# --- Python Backend ---
+__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*$py.class
+backend/venv/
+venv/
+.pytest_cache/
+backend/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+pip-log.txt
+pip-delete-this-directory.txt
+backend/installed.sha256
+backend/venv/installed.sha256
+
+# --- Database & Extracted Content ---
+# The local SQLite index is large and environment-specific.
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+backend/data/extracted/
+backend/data/temp/
+
+# --- LLM Models ---
+# GGUF models are multiple gigabytes and must be downloaded locally.
+models/*.gguf
+backend/models/*.gguf
+
+# --- User & Local Settings ---
+# Local settings contains hardcoded scan paths.
+backend/data/settings.json
+*.local
+.env
+.env.*
+!.env.example
