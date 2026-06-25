@@ -428,7 +428,7 @@ Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ## Author
 
-**Kiwi is built and maintained by [Taariq Ebrahim](https://github.com/Taariqmornings)** — a software engineer based in Mbombela, South Africa, focused on AI systems and offline-capable software for environments with limited connectivity.
+**Kiwi is built and maintained by [Taariq Ebrahim](https://github.com/Taariqmornings)** — a software engineer based in Mbombela, South Africa, focused on software, AI systems and offline-capable softwares.
 
 Taariq is the founder of **Chatterbolic Solutions**, a software company specialising in AI automation and custom systems. Kiwi is an open-source project authored by Taariq under the Chatterbolic banner.
 
