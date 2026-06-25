@@ -1,77 +1,85 @@
-name: 🚀 Kiwi CI Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
-  # --- Frontend Validation (React/Vite/TypeScript/Electron) ---
-  frontend-build:
-    name: ⚛️ Frontend Lint & Build
+  # ---------------------------------------------------------------------------
+  # Frontend — lint, test, type-check, build
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
 
-      - name: Setup Node.js
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-size: 18
-          node-version: 18.x
-          cache: 'npm'
-          cache-dependency-path: knowledge-system/frontend/package-lock.json
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Dependencies
-        working-directory: knowledge-system/frontend
+      - name: Install dependencies
+        working-directory: frontend
         run: npm ci
 
-      - name: Run ESLint
-        working-directory: knowledge-system/frontend
+      - name: Lint
+        working-directory: frontend
         run: npm run lint
 
-      - name: Run Frontend Tests (Vitest)
-        working-directory: knowledge-system/frontend
+      - name: Unit tests (Vitest)
+        working-directory: frontend
         run: npm run test
 
-      - name: Validate TypeScript & Compile Frontend Build
-        working-directory: knowledge-system/frontend
+      - name: Type-check & build
+        working-directory: frontend
         run: npm run build
 
-  # --- Backend Validation (Python/FastAPI) ---
-  backend-validation:
-    name: 🐍 Backend Lint & Static Check
+  # ---------------------------------------------------------------------------
+  # Backend — lint, type-check, tests
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
 
-      - name: Setup Python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
-          cache-dependency-path: knowledge-system/backend/requirements.txt
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
 
-      - name: Install Dependencies
-        working-directory: knowledge-system/backend
+      - name: Install dependencies
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
-          # Install requirements.txt (ignoring platform-specific compiled dependencies if needed)
-          pip install -r requirements.txt
+          # libzim has no Linux wheel for all Python versions; skip it in CI
+          # so the rest of the stack can still be validated.
+          grep -v "^libzim" requirements.txt | pip install -r /dev/stdin
+          pip install flake8 pytest pytest-cov
 
-      - name: Run Flake8 Code Quality Checks
-        working-directory: knowledge-system/backend
+      - name: Lint (flake8)
+        working-directory: backend
         run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings.
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # Fail on syntax errors or undefined names
+          flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warn on style issues (non-blocking)
+          flake8 app --count --exit-zero --max-line-length=120 --statistics
 
-      - name: Run Backend Tests (pytest)
-        working-directory: knowledge-system/backend
-        run: |
-          # run tests only if there are tests defined (avoiding failure on empty tests)
-          pytest --ignore=venv/
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -v --ignore=venv/

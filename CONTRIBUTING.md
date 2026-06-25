@@ -23,8 +23,8 @@ To clone the repository and start developing:
 
 1. **Clone the Repository & Navigate to the Root**
    ```bash
-   git clone <repository-url>
-   cd knowledge-system
+   git clone https://github.com/Taariqmornings/kiwi-knowledge-system.git
+   cd kiwi-knowledge-system
    ```
 
 2. **Launch in Development Mode (Hot-Reload Enabled)**

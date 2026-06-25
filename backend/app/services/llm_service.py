@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Iterator, Optional
 
 import urllib.request
@@ -16,8 +17,10 @@ import urllib.error
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_URL = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "gemma3:1b"
+# Configurable via environment variables — see .env.example at the repo root.
+# Defaults allow the app to work out of the box with a standard Ollama install.
+OLLAMA_URL: str = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+DEFAULT_MODEL: str = os.environ.get("OLLAMA_MODEL", "gemma3:1b")
 
 
 class LlmService:

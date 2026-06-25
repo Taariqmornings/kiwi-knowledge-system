@@ -1,33 +1,62 @@
 # Changelog
 
-All notable changes to the **Kiwi: Offline Knowledge OS** project will be documented in this file. This project adheres to Semantic Versioning (`vMAJOR.MINOR.PATCH`).
+All notable changes to **Kiwi — Offline Knowledge Base System** are documented here.  
+This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.0] - 2026-05-29
-This is the official stable release of **Kiwi**, representing a production-grade local knowledge indexing and RAG-enabled AI search desktop application.
+## [1.1.0] — 2026-06-25
 
 ### Added
-- **Ollama Gemma 3 integration**: Full offline retrieval-augmented generation (RAG) capabilities using local loopback HTTP calls to Ollama daemon (`gemma3:1b`).
-- **Deferred Startup Indexing**: Defer directory scanning and database indexing for 5 seconds on startup to allow React frontend's initial API fetches to complete without GIL bottlenecks.
-- **Auto-detection of ZIM files**: Scan directories and automatically register valid ZIM archives to index.
-- **Comprehensive Community Templates**: Added issue templates, PR checklists, and developer setup documentation for collaborative scaling.
+- **`GET /api/search/all`** — new endpoint returns all indexed articles across every archive with pagination; provides a guaranteed path to content regardless of auto-categorisation
+- **Browse All Articles button** in the Search panel — visible when indexed archives are present and no search query is active
+- **Demo seed script** (`backend/scripts/seed_demo.py`) — populates the database with 30 sample articles covering science, history, technology, and more; lets new users explore the full UI without downloading ZIM files
+- **`.env.example`** — comprehensive reference for every configurable environment variable with safe defaults and setup instructions
+- **`OLLAMA_HOST` and `OLLAMA_MODEL` environment variables** — previously hardcoded values in `llm_service.py` are now fully configurable; Ollama connection details no longer require source code changes
+- **`DATABASE_PATH`, `INDEX_BATCH_SIZE`, `MAX_SUMMARY_LENGTH`, `MAX_REQUEST_SIZE_MB`, `RATE_LIMIT_PER_MINUTE` environment variables** — all previously hardcoded constants in `config.py` can now be overridden without touching source code
 
 ### Changed
-- **Performance Tuning**: Refactored SQLite pragmas. Switched to `journal_mode=WAL` (Write-Ahead Logging) and `synchronous=NORMAL` to enable concurrent reads while building the full-text search index.
-- **Robust SQLite Busy Handlers**: Configured `busy_timeout=30000` (30 seconds) to prevent locked database errors under heavy indexing.
+- `config.py` rewritten to read every tunable value from environment variables with sensible defaults
+- `llm_service.py` reads `OLLAMA_HOST` and `OLLAMA_MODEL` from the environment instead of using hardcoded strings
+- CI workflow (`.github/workflows/ci.yml`) fixed: `working-directory` paths corrected from `knowledge-system/frontend` → `frontend` (broken since initial commit); spurious `node-size` key removed; now tests against Node 18 and 20, Python 3.10/3.11/3.12
+- `README.md` rewritten: added 5-minute quick start, browser-only mode instructions, full environment variable table, API reference table, project structure diagram, and AI chat setup guide; removed `<repository-url>` placeholder
 
 ### Fixed
-- **FTS5 Drift Safety**: Implemented programmatically dropped and recreated database triggers (`articles_ai`, `articles_ad`, `articles_au`) during startup checkups to prevent synchronization drift crashes.
-- **Duplicate Cleanups**: Added automatic startup cleanup task that deduplicates the database index by keeping the lowest unique ID per `(archive_id, path)`.
+- CI was completely broken due to wrong `working-directory` paths referencing a non-existent parent folder
+- `libzim` excluded from CI pip install (no Linux wheel available on all Python versions); remaining stack still validated
 
 ---
 
-## [0.9.0] - 2026-02-15
-Initial beta release of Kiwi offline knowledge platform.
+## [1.0.0] — 2026-05-29
 
 ### Added
-- **FastAPI Backend Server**: Structured API endpoints for serving articles, listing registered archives, and fetching health statistics.
-- **Vite & React Frontend**: Beautiful web UI featuring full-text search layout, sidebar, and direct offline article reader.
-- **Electron Container**: Integrated desktop shell using Electron wrapping to run backend and frontend locally in a single workspace.
-- **ZIM File Parsing**: Integrated `libzim` Python bindings to directly access compressed ZIM archives.
+- **Ollama Gemma 3 integration** — full offline RAG chat using local loopback HTTP calls to the Ollama daemon (`gemma3:1b` default)
+- **Deferred startup indexing** — background indexing deferred 5 s to allow React frontend queries to resolve before the GIL is occupied
+- **Persistent IndexJob table** — background job state survives server restarts; in-flight jobs auto-marked as `failed` on next startup
+- **Archive auto-categorisation** — ZIM filenames are matched against keyword lists to auto-assign category tags
+- **Community templates** — GitHub issue templates, PR checklist, CONTRIBUTING.md
+
+### Changed
+- SQLite tuned with `journal_mode=WAL`, `synchronous=NORMAL`, and `busy_timeout=30000` for concurrent read/write performance during indexing
+
+### Fixed
+- FTS5 trigger drift prevention — triggers are dropped and recreated on startup to prevent sync crashes
+- Duplicate article deduplication on startup via `(archive_id, path)` unique constraint
+
+---
+
+## [0.9.0] — 2026-02-15
+
+### Added
+- FastAPI backend with article, archive, search, and settings endpoints
+- React 19 + TypeScript + Vite frontend
+- Electron shell container
+- SQLite FTS5 full-text search index
+- ZIM file parsing via `python-libzim`
+- BM25 field-boosted search (title 5×, keywords 3×, summary 1×) with 4-tier typo-tolerant fallback
+- Background article indexer with SSE progress streaming
+- Alembic database migrations
+- Multi-tab article reader with browser history
+- Bookmarks stored in `localStorage`
+- Electron IPC handlers for native directory picker, backend URL, and status events
+- PowerShell launcher script (`start.ps1`) with smart pip-install hashing, port cleanup, and dev/production modes

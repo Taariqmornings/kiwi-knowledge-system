@@ -1,284 +1,430 @@
-# 🥝 Kiwi: Offline Knowledge OS
+# Kiwi — Offline Knowledge Base System
 
-### *Empowering Local, Offline Intelligence at the Edge*
+> Index compressed ZIM archives, search hundreds of thousands of articles in under 100 ms, and chat with your local knowledge base using a private on-device AI — all with zero internet dependency.
 
-![Kiwi Banner](.github/assets/hero-banner.png)
-
----
-
-## 📋 Tagline
-An enterprise-grade, local-first search and offline RAG AI chat system designed to index and extract knowledge from compressed ZIM archives, enabling low-latency lookup and intelligent question-answering with zero internet dependencies.
-
----
-
-## 🛡️ Project Status & Badges
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/CI-Passing-success.svg)](#)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-cyan.svg)](#)
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](#)
-[![Electron](https://img.shields.io/badge/Electron-30.0-violet.svg)](#)
-[![React](https://img.shields.io/badge/React-19.0-blue.svg)](#)
-[![Local AI](https://img.shields.io/badge/Local%20AI-Ollama-orange.svg)](#)
-[![Maintained by](https://img.shields.io/badge/Maintained%20by-Chatterbolic-0ea5e9.svg)](https://chatterbolic.co.za)
+[![CI](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab.svg)](#prerequisites)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933.svg)](#prerequisites)
+[![React](https://img.shields.io/badge/React-19-61dafb.svg)](#tech-stack)
 
 ---
 
-## 👁️ Project Preview
-Kiwi delivers a highly polished desktop experience containing a global Command Palette (Ctrl+K), tabbed article browsing, structured search results matching, and an interactive RAG chat window. 
+## What is Kiwi?
+
+Kiwi is a desktop application that lets you turn offline [ZIM archives](https://wiki.kiwix.org/wiki/Content_in_all_languages) (Wikipedia, StackExchange, DevDocs, medical references, and more) into a fast, searchable personal knowledge base — with an optional local AI chat assistant that never touches the internet.
 
 ```
-┌────────────────────────────────────────────────────────┐
-│  [≡] Kiwi OS  [Search]   [React 19] x  [FastAPI] x  +  │
-├────────────────────────────────────────────────────────┤
-│ 🔍 Search Wikipedia...                          [Ctrl+K]│
-├────────────────────────────────────────────────────────┤
-│  SearchResults (140,240 articles indexed)              │
-│  - Photosynthesis [Wiki] — Process used by plants...  │
-│  - Coding Standards [DevDocs] — Formatting rules...   │
-│                                                        │
-└────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎥 Demo
-*(To record a live capture of your running Kiwi instance, launch with `start.bat -Dev` and place your `.gif` animation inside `.github/assets/demo.gif`)*
-
----
-
-## ✨ Key Features
-- **Zero-Latency Full-Text Search**: Leverage SQLite FTS5 virtual tables to scan hundreds of thousands of offline articles in `< 100ms`.
-- **Direct ZIM Parsing**: Stream compressed data directly from standard `.zim` files (Wikipedia, StackExchange, DevDocs) using Python `libzim` bindings.
-- **Offline RAG AI Chat**: Chat naturally with your offline database. Context-appropriate citations are automatically compiled and injected into a local Ollama model.
-- **Desktop First Integration**: Electron shell container coordinates execution of python services and React browser windows in a native application context.
-- **Multi-Tab Browsing**: Open, read, and cross-reference multiple ZIM articles concurrently using a sleek tabbed interface.
-- **Deferred Indexing**: Intelligent scheduling delays directory indexing threads for 5 seconds on startup, letting frontend queries resolve first without GIL lag.
-
----
-
-## 💡 Why This Exists
-In South Africa's diverse business landscapes—ranging from agricultural centers in Mpumalanga to industrial hubs—reliable, high-bandwidth internet connectivity is not always guaranteed. 
-
-Kiwi was engineered by **Chatterbolic Solutions** to demonstrate that **high-performance AI does not require the cloud**. By combining standard compressed ZIM libraries with highly optimized local databases and edge-based LLM daemons, Kiwi provides organizations with access to massive technical libraries, manuals, and generative AI support completely offline. It represents our core engineering philosophy: **practical, implementation-focused systems that work under real-world constraints**.
-
----
-
-## 🏗️ Architecture Overview
-Kiwi consists of a React frontend served via Vite, running inside an Electron wrapper, talking to a Python FastAPI backend. The backend manages direct file handles on compressed ZIM archives and handles search indices in a WAL-tuned SQLite database, feeding retrieved contexts into a local Ollama process.
-
-```mermaid
-graph TD
-    subgraph Client ["Client (Electron Container)"]
-        UI[React 19 Frontend UI]
-        Tabs[Browser Tab Manager]
-        Chat[RAG Chat Sidebar]
-    end
-
-    subgraph Server ["Server (FastAPI on Port 8000)"]
-        API[FastAPI API Router]
-        FTS[SQLite FTS5 Index Engine]
-        RAG[RAG Retrieval Service]
-        Indexer[Background Indexer Service]
-    end
-
-    subgraph Engines ["Local Storage & Engines"]
-        DB[(SQLite DB - WAL Mode)]
-        ZIM[(Compressed ZIM Files)]
-        Ollama[Local Ollama Daemon]
-    end
-
-    UI -->|1. Search / Article Requests| API
-    Tabs -->|2. Load ZIM Document| API
-    Chat -->|3. SSE RAG Ask| API
-    API -->|Query Metadata| DB
-    API -->|Fetch Article HTML| ZIM
-    API -->|4. BM25 Query| RAG
-    RAG -->|5. Retrieve Citations| DB
-    RAG -->|6. Loopback Prompt| Ollama
-    Ollama -->|7. SSE Token Stream| Chat
-    Indexer -->|Decompress & Index| ZIM
-    Indexer -->|Write Search Index| DB
+┌─────────────────────────────────────────────────────────┐
+│  Kiwi  │ Search  │ Archives  │ Chat  │ Settings          │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  🔍  Search your offline archives...        [Ctrl+K]    │
+│                                                         │
+│  Photosynthesis  ·  Wikipedia EN                        │
+│  The process by which plants convert light to energy…   │
+│                                                         │
+│  Python (programming language)  ·  DevDocs              │
+│  High-level general-purpose language created by…        │
+│                                                         │
+│  Quantum Mechanics  ·  Wikipedia EN                     │
+│  Fundamental theory in physics describing nature at…    │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📸 Screenshots
-*(Place UI screenshots in `.github/assets/search-panel.png` and `.github/assets/chat-interface.png` for public rendering)*
+## Features
+
+- **Full-text search** — SQLite FTS5 with BM25 ranking returns results in under 100 ms across millions of indexed articles
+- **ZIM archive support** — directly reads `.zim` files from Wikipedia, StackExchange, DevDocs, and any other Kiwix-compatible archive
+- **Modern article reader** — transforms raw ZIM HTML into a clean, readable page with auto-generated table of contents, image lightbox, and code copy buttons
+- **Offline AI chat (optional)** — RAG pipeline retrieves relevant articles and streams answers from a local [Ollama](https://ollama.com) model; works without internet
+- **Multi-tab browsing** — open and cross-reference multiple articles simultaneously
+- **Background indexing** — indexes archives in a background thread with live progress; survives restarts via a persistent job table
+- **Command palette** — `Ctrl+K` for instant navigation
+- **Electron desktop app** — runs as a native application on Windows, macOS, and Linux
+- **Browser mode** — also runs in any browser without Electron (no file picker, everything else works)
 
 ---
 
-## ⚙️ Installation
+## Tech Stack
 
-### 📋 Prerequisites
-1. **Python 3.10+** (Ensure `python` is added to your environment `PATH`).
-2. **Node.js 18+** (Includes `npm`).
-3. **Ollama** (Running locally).
-   - Pull the default model: `ollama pull gemma3:1b`
-4. **ZIM Archives**: Download ZIM files (e.g., Simple Wikipedia) from Kiwix and place them in a folder.
+| Layer | Technology |
+|---|---|
+| Desktop shell | Electron 30 |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4 |
+| Backend API | FastAPI, Uvicorn |
+| Database | SQLite (WAL mode) + FTS5 full-text index |
+| ORM / migrations | SQLAlchemy 2.0, Alembic |
+| ZIM parsing | python-libzim |
+| Local AI | Ollama (any model — default: `gemma3:1b`) |
 
 ---
 
-## 🚀 Quick Start
-Kiwi contains a PowerShell launcher script that automatically provisions virtual environments, installs dependencies, and launches both frontend and backend.
+## Architecture
 
-### Running in Production Mode (Prebuilt Assets)
-To compile assets and launch the app in optimized production mode:
+```
+┌─────────────────────────────────────────┐
+│  Electron (desktop shell)               │
+│  ┌───────────────────────────────────┐  │
+│  │  React 19  ·  Vite  ·  TypeScript │  │
+│  │  Search · Reader · Chat · Archives│  │
+│  └──────────────┬────────────────────┘  │
+└─────────────────│───────────────────────┘
+                  │ HTTP / SSE
+┌─────────────────▼───────────────────────┐
+│  FastAPI  (port 8000)                   │
+│  ┌──────────┐  ┌──────────┐  ┌───────┐ │
+│  │ Search   │  │ Articles │  │  Chat │ │
+│  │ FTS5/BM25│  │ ZIM → HTML│  │  RAG │ │
+│  └──────────┘  └──────────┘  └───┬───┘ │
+└───────────────────────────────────│─────┘
+          │                         │
+┌─────────▼──────┐      ┌──────────▼────┐
+│ SQLite         │      │ Ollama daemon │
+│ knowledge.db   │      │ (optional)    │
+│ articles + FTS │      │ gemma3:1b     │
+└────────────────┘      └───────────────┘
+          │
+┌─────────▼──────┐
+│ .zim files     │
+│ (local disk)   │
+└────────────────┘
+```
+
+---
+
+## Quick Start — Try it in 5 minutes (no ZIM files needed)
+
+This path seeds the database with 30 sample articles so you can explore the full UI immediately.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Taariqmornings/kiwi-knowledge-system.git
+cd kiwi-knowledge-system
+
+# 2. Install backend dependencies
+cd backend
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+# 3. Run database migrations (creates the SQLite database)
+alembic upgrade head
+
+# 4. Seed demo articles (no ZIM file required)
+python scripts/seed_demo.py
+
+# 5. Start the backend
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+# 6. In a separate terminal — install and start the frontend
+cd ../frontend
+npm install
+npm run dev
+
+# 7. Open http://localhost:5173 in your browser
+```
+
+Search for terms like **photosynthesis**, **python**, **quantum**, **gravity**, or **Shakespeare** to see results immediately.
+
+> **See it in action:** [`docs/DEMO.md`](docs/DEMO.md) contains verified output from a live instance running against **1.1 million indexed articles** — including real search results and an offline AI chat answer with citations — plus a script for recording your own walkthrough.
+
+---
+
+## Full Installation (with real ZIM files)
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| Python | 3.10+ | Must be in `PATH` |
+| Node.js | 18+ | Includes `npm` |
+| Git | any | — |
+| Ollama | latest | **Optional** — only needed for AI chat |
+
+### Step 1 — Clone
+
+```bash
+git clone https://github.com/Taariqmornings/kiwi-knowledge-system.git
+cd kiwi-knowledge-system
+```
+
+### Step 2 — Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set any values you want to override. At minimum, the defaults work out of the box. See [Environment Variables](#environment-variables) below for a full reference.
+
+### Step 3 — Get ZIM archives (optional but recommended)
+
+Download any `.zim` file from [https://download.kiwix.org/zim/](https://download.kiwix.org/zim/) and place it in a folder on your machine. Good starting points:
+
+- `wikipedia_en_simple_all_nopic` — Simple English Wikipedia (~1 GB, manageable)
+- `stackoverflow.com_en_all` — Stack Overflow archive
+- `devdocs.io_en_all` — Developer documentation
+
+### Step 4 — Launch
+
+**Windows (recommended — handles everything automatically):**
+
 ```cmd
+# Production mode
 start.bat
-```
 
-### Running in Development Mode (Hot-Reload Enabled)
-To work on code with hot-reloads active for FastAPI (`uvicorn --reload`) and React (`Vite HMR`):
-```cmd
+# Development mode (hot reload for backend + frontend)
 start.bat -Dev
 ```
 
----
+The launcher script:
+- Creates and provisions the Python virtual environment automatically
+- Installs Node dependencies if missing
+- Runs database migrations
+- Starts the FastAPI backend and Vite dev server
+- Launches the Electron desktop window
 
-## 📖 Usage Examples
+**macOS / Linux (manual start):**
 
-### 1. Auto-Scanning ZIM Archives
-When starting, Kiwi scans the folder specified in **Settings**. 
-- Go to the **Settings** panel (via sidebar or Command Palette `Ctrl+K`).
-- Enter the absolute directory containing your `.zim` files.
-- Click **Save**. The background indexer will automatically scan and catalog files.
+```bash
+# Terminal 1 — backend
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-### 2. Fast Article Searching
-- Go to the **Search** tab.
-- Type in keywords (e.g. `Photosynthesis`). Search results return instantly.
-- Click on a search result to open it in a new reader tab.
-
-### 3. RAG-Enabled Local Chat
-- Open the Chat Sidebar (click the chat icon or press `Ctrl+B` then toggle chat).
-- Ask a question: `How do plants create food?`
-- The system retrieves the top 8 relevant indexed articles, inserts them as citations, feeds them to `gemma3:1b` over loopback, and streams the answer with inline source citations (e.g., `[1]`, `[2]`).
-
----
-
-## 💻 Developer Experience
-We prioritize developer velocity. The launcher script (`start.ps1`) automates setup tasks:
-- **Port Management**: The script automatically checks and terminates running processes on ports `8000` (FastAPI) and `5173` (Vite) before starting, avoiding annoying port-in-use errors.
-- **Smart Pip Install**: The script hashes `requirements.txt` and only triggers `pip install` when dependencies actually change, accelerating boot times.
-- **Vite-Electron Tunneling**: Setting `KIWI_FORCE_DEV=1` instructs Electron to bypass precompiled production folders and load the live HMR server directly.
-
----
-
-## 🤖 AI & Automation Features
-- **Prompt Architecture**: Prompt templates include history truncation (capped at 8 turns and 600 characters per message) to protect Gemma-3's context window.
-- **Retrieval Thresholding**: We assess keyword overlap density. If fewer than 2 sources overlap, Kiwi appends a warning tag prompting the model to use general knowledge and prepend responses with `"From general knowledge:"` rather than hallucinating citations.
-- **Multilingual Support**: Supports Afrikaans, English, and Zulu prompts through local LLM fine-tuning options.
-
----
-
-## ⚡ Performance Characteristics
-- **SQLite WAL Mode**: Running `PRAGMA journal_mode=WAL` and `PRAGMA synchronous=NORMAL` allows SQLite to run full-text writes during indexing without locking concurrent reader queries.
-- **Page Cache Tuning**: Set to `-20000` (~20MB memory cache) to ensure database index page hits remain memory-resident.
-- **Database Index Deduping**: Programmatically dedupes redundant index elements on startup, maintaining index integrity.
-
----
-
-## 🛠️ Tech Stack
-- **Frontend Core**: React 19, TypeScript 6.0, Vite 8.0, Electron 30.0
-- **Frontend Styling**: Vanilla CSS, Tailwind CSS 4.3
-- **Backend API**: FastAPI, Uvicorn
-- **Database & Search**: SQLite FTS5, SQLAlchemy 2.0, Alembic
-- **ZIM Parsing**: python-libzim 3.0
-- **Local AI Daemon**: Ollama (`gemma3:1b` GGUF)
-
----
-
-## 📁 Project Structure
-```
-knowledge-system/
-├── .github/                 # GitHub workflows & templates
-│   ├── assets/              # Branding logo & screenshots
-│   └── workflows/           # CI/CD pipelines
-├── backend/                 # FastAPI application
-│   ├── alembic/             # DB schema migration versions
-│   ├── app/                 # Backend source modules
-│   │   ├── api/             # API routes (search, chat, archives)
-│   │   ├── core/            # Config, DB connections, settings
-│   │   └── services/        # RAG pipelines, Indexer, LLM connectors
-│   └── requirements.txt     # Python requirements
-├── frontend/                # React / Electron application
-│   ├── electron/            # Main Electron process
-│   ├── src/                 # React UI source code
-│   └── package.json         # Node scripts & dependencies
-├── start.bat                # Windows Launcher (CMD wrapper)
-└── start.ps1                # PowerShell orchestrator script
+# Terminal 2 — frontend (browser mode — no Electron required)
+cd frontend
+npm install
+npm run dev
+# Open http://localhost:5173
 ```
 
----
+### Step 5 — Index your ZIM files
 
-## ⚙️ Configuration
-Backend settings are located in `backend/app/core/config.py`.
-Key configurable options include:
-- `INDEX_BATCH_SIZE`: Number of articles processed before committing to the SQLite database (default: `1000`).
-- `MAX_SUMMARY_LENGTH`: Length limit for search summaries (default: `500` characters).
-- `RATE_LIMIT_PER_MINUTE`: Protects backend routes from loop overheads (default: `60` requests/min).
+1. Open the **Archives** tab in the app
+2. Click **Browse** (Electron) or enter the directory path manually
+3. Click **Scan** — Kiwi finds all `.zim` files automatically
+4. Click **Index** on each archive — background indexing starts immediately
 
----
+### Step 6 — Search
 
-## 🌐 Environment Variables
-- `KIWI_FORCE_DEV`: Set to `1` to run Electron in HMR dev mode. Set to `0` for production dist.
-- `DATABASE_PATH`: Custom path override for SQLite DB (default: `backend/data/knowledge.db`).
+Switch to the **Search** tab and start typing. Results appear instantly once indexing is complete.
 
 ---
 
-## 📦 Build Instructions
-To bundle the Electron application into a standalone installer or portable executable:
+## Environment Variables
+
+Copy `.env.example` to `.env` — all variables are optional with sensible defaults.
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_PATH` | `backend/data/knowledge.db` | Path to the SQLite database file |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | URL of your local Ollama daemon |
+| `OLLAMA_MODEL` | `gemma3:1b` | Model name to use for AI chat (must be pulled first) |
+| `INDEX_BATCH_SIZE` | `1000` | Articles committed per batch during indexing |
+| `MAX_SUMMARY_LENGTH` | `500` | Max characters stored in the article summary field |
+| `MAX_REQUEST_SIZE_MB` | `50` | Max incoming request body size |
+| `RATE_LIMIT_PER_MINUTE` | `60` | API rate limit per IP |
+| `KIWI_FORCE_DEV` | `0` | Set to `1` to force Electron to load the Vite dev server |
+
+---
+
+## AI Chat Setup (Optional)
+
+The chat sidebar uses a local [Ollama](https://ollama.com) model. No API key or internet connection required.
+
+```bash
+# 1. Install Ollama from https://ollama.com
+
+# 2. Start the Ollama daemon
+ollama serve
+
+# 3. Pull a model (pick any that fits your hardware)
+ollama pull gemma3:1b        # ~900 MB  — fast, good for most queries
+ollama pull llama3.2:3b      # ~2 GB    — better reasoning
+ollama pull phi3:mini        # ~2.3 GB  — Microsoft's efficient model
+
+# 4. Set the model in your .env (if not using the default)
+# OLLAMA_MODEL=llama3.2:3b
+```
+
+If Ollama is not running, all search and article browsing features still work normally. Only the chat sidebar will be disabled.
+
+---
+
+## API Reference
+
+The FastAPI backend exposes a REST + SSE API at `http://localhost:8000`.
+
+Interactive docs available at: **`http://localhost:8000/docs`** (Swagger UI)
+
+### Key endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/search/query?q=...` | Full-text BM25 search with pagination |
+| `GET` | `/api/search/all` | Browse all indexed articles |
+| `GET` | `/api/search/autocomplete?q=...` | Instant title suggestions |
+| `GET` | `/api/search/categories` | List browse categories |
+| `GET` | `/api/search/categories/{id}/articles` | Browse articles by category |
+| `GET` | `/api/archives` | List all registered ZIM archives |
+| `POST` | `/api/archives/scan` | Scan a directory for ZIM files |
+| `POST` | `/api/archives/{id}/index/start` | Start background indexing |
+| `GET` | `/api/archives/{id}/index/stream` | SSE stream of indexing progress |
+| `GET` | `/api/articles/{id}/view/{path}` | Render an article as modern HTML |
+| `POST` | `/api/chat/ask` | SSE stream of AI chat response |
+| `GET` | `/api/health` | Backend health + stats |
+
+---
+
+## Project Structure
+
+```
+kiwi-knowledge-system/
+├── .github/
+│   ├── assets/              # Banner and screenshots
+│   ├── ISSUE_TEMPLATE/      # Bug report and feature request templates
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── workflows/
+│       └── ci.yml           # GitHub Actions CI
+│
+├── backend/
+│   ├── alembic/             # Database schema migrations
+│   ├── app/
+│   │   ├── api/             # FastAPI route handlers
+│   │   │   ├── archives.py  # ZIM archive management
+│   │   │   ├── articles.py  # Article rendering
+│   │   │   ├── chat.py      # AI chat / RAG
+│   │   │   ├── search.py    # FTS5 search & browse
+│   │   │   └── settings.py  # Persisted app settings
+│   │   ├── core/
+│   │   │   ├── config.py    # All configuration & env vars
+│   │   │   └── database.py  # SQLAlchemy engine & session
+│   │   ├── models/
+│   │   │   └── schemas.py   # Pydantic request/response models
+│   │   ├── services/
+│   │   │   ├── archive_service.py    # ZIM file scanning
+│   │   │   ├── indexer_service.py    # Background article indexer
+│   │   │   ├── job_registry.py       # Persistent job state
+│   │   │   ├── llm_service.py        # Ollama streaming client
+│   │   │   ├── rag_service.py        # Retrieval-augmented generation
+│   │   │   ├── search_service.py     # BM25 / FTS5 query engine
+│   │   │   └── transformer_service.py # ZIM HTML → modern HTML
+│   │   └── main.py          # FastAPI app, lifespan, middleware
+│   ├── scripts/
+│   │   └── seed_demo.py     # Seed 30 sample articles for demo
+│   ├── tests/               # pytest test suite
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── electron/
+│   │   ├── main.js          # Electron main process
+│   │   └── preload.js       # Context bridge (IPC)
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── context/         # Global app state (AppContext)
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── services/
+│   │   │   └── api.ts       # Typed API client
+│   │   └── types/
+│   │       └── index.ts     # TypeScript interfaces
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── .env.example             # Environment variable reference
+├── .gitignore
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE                  # MIT
+├── start.bat                # Windows launcher (CMD wrapper)
+└── start.ps1                # Windows launcher (PowerShell — handles everything)
+```
+
+---
+
+## Running Tests
+
+```bash
+# Backend (pytest)
+cd backend
+source venv/bin/activate   # or venv\Scripts\activate on Windows
+pytest tests/ -v
+
+# Frontend (Vitest)
+cd frontend
+npm run test
+```
+
+---
+
+## Building for Distribution
+
 ```bash
 cd frontend
+
+# Build production frontend bundle
+npm run build
+
+# Package as a native desktop installer
 npm run electron:pack
 ```
-This outputs compiled multi-platform builds inside `frontend/release/`.
+
+Output is placed in `frontend/release/`. Supported targets:
+- **Windows** — `.exe` NSIS installer + portable `.exe`
+- **macOS** — `.dmg`
+- **Linux** — `.AppImage`
 
 ---
 
-## 🔄 Release Workflow
-1. Run lint tests: `npm run lint` and `flake8 .`
-2. Run test suites: `npm run test` and `pytest`
-3. Update version strings in `package.json` and `backend/app/core/config.py`.
-4. Compile production frontend bundle: `npm run build`
-5. Package application: `npm run electron:pack`
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
+
+- Development environment setup
+- Coding standards (Python PEP 8, strict TypeScript)
+- Branch naming and commit message conventions
+- How to run the test suite before submitting a PR
+
+For bugs, use the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md) template.  
+For ideas, use the [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md) template.
 
 ---
 
-## 🗺️ Roadmap
-- [x] Full-Text Search and libzim extraction.
-- [x] Local RAG AI chat via Ollama.
-- [ ] Context-aware auto-suggest during FTS querying.
-- [ ] Support for directory-level scanning of split ZIM files.
-- [ ] Custom South African translation model fine-tuning (English to Afrikaans/Zulu) on device.
+## Roadmap
+
+- [x] Full-text BM25 search over ZIM archives
+- [x] Background indexing with persistent job tracking
+- [x] Local RAG AI chat via Ollama
+- [x] Multi-tab article reader with browser history
+- [x] Command palette (`Ctrl+K`)
+- [x] Electron desktop app (Windows / macOS / Linux)
+- [ ] Fuzzy / Levenshtein fallback search tier
+- [ ] Bookmarks sync and export
+- [ ] Article annotation and highlights
+- [ ] Split ZIM file support
+- [ ] CI-built binary releases
 
 ---
 
-## 🤝 Contributing
-Contributions make the open-source community an amazing place. Please review our [CONTRIBUTING.md](CONTRIBUTING.md) for style guidelines, test configurations, and pull request procedures.
+## License
+
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ---
 
-## 📄 License
-Distributed under the MIT License. See [LICENSE](LICENSE) for details.
+## About
 
----
+Built and maintained by **Chatterbolic Solutions** — a technology company based in Mbombela, South Africa, specialising in AI automation and offline-capable systems for environments with limited connectivity.
 
-## 🏢 About Chatterbolic Solutions
-Chatterbolic Solutions is a Nelspruit (Mbombela) based technology provider specializing in AI automation, custom software development, and workflow systems for South African businesses. 
-
-Our core products include:
-- **AI Voice Agents**: 24/7 web-based receptionists handling inbound enquiries, qualifies leads, and books appointments in local languages (English, Afrikaans, Zulu).
-- **Custom Chatbots**: Localized RAG systems trained on company knowledge.
-- **Workflow Automation**: CRM integration, lead tracking, and process optimization.
-
-Learn more at [chatterbolic.co.za](https://chatterbolic.co.za).
-
----
-
-## 📞 Contact / Links
-- **Website**: [chatterbolic.co.za](https://chatterbolic.co.za)
-- **Phone/WhatsApp**: +27 (0)79 063 4133
-- **Email**: taariq27e@gmail.com
-- **Services**: [chatterbolic.co.za/services](https://chatterbolic.co.za/services)
-- **Why Choose Us**: [chatterbolic.co.za/why-choose-us](https://chatterbolic.co.za/why-choose-us)
-- **Company Address**: Mbombela, Mpumalanga, South Africa, 1200
+[chatterbolic.co.za](https://chatterbolic.co.za)
