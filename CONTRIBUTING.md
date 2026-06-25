@@ -1,6 +1,6 @@
 # Contributing to Kiwi
 
-Welcome! We are excited that you are interested in contributing to **Kiwi - Offline Knowledge OS**. Kiwi is built and maintained by **Chatterbolic Solutions**, and we hold our open-source codebase to the same rigorous standards as our enterprise AI solutions.
+Welcome! We are excited that you are interested in contributing to **Kiwi - Offline Knowledge OS**. Kiwi is built and maintained by **Taariq Ebrahim** ([@Taariqmornings](https://github.com/Taariqmornings)), founder of Chatterbolic Solutions. The codebase is held to the same rigorous standards as production AI software.
 
 By contributing to this repository, you help make offline information search and local AI RAG systems faster, more accessible, and highly reliable.
 
@@ -86,7 +86,7 @@ To maintain code readability and keep our application lightweight and high-perfo
 ### ⚛️ TypeScript & React (Frontend)
 - **Code Style**: Use strict TypeScript types. Avoid using `any` type definitions.
 - **Components**: Create modular, reusable functional components. Leverage the context pattern (`AppContext`) for global app states.
-- **Styling**: Write modular, clean vanilla CSS in `index.css`. Keep UI transitions smooth and use Chatterbolic's core theme colors (deep slate backgrounds, cyan `#0ea5e9` highlights).
+- **Styling**: Write modular, clean vanilla CSS in `index.css`. Keep UI transitions smooth and use the project's core theme colors (deep slate backgrounds, cyan `#0ea5e9` highlights).
 
 ---
 

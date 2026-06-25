@@ -2,6 +2,9 @@
 
 > Index compressed ZIM archives, search hundreds of thousands of articles in under 100 ms, and chat with your local knowledge base using a private on-device AI — all with zero internet dependency.
 
+Created and maintained by **[Taariq Ebrahim](https://github.com/Taariqmornings)**.
+
+[![Author](https://img.shields.io/badge/Author-Taariq%20Ebrahim-0ea5e9.svg)](https://github.com/Taariqmornings)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab.svg)](#prerequisites)
@@ -423,8 +426,13 @@ Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ---
 
-## About
+## Author
 
-Built and maintained by **Chatterbolic Solutions** — a technology company based in Mbombela, South Africa, specialising in AI automation and offline-capable systems for environments with limited connectivity.
+**Kiwi is built and maintained by [Taariq Ebrahim](https://github.com/Taariqmornings)** — a software engineer based in Mbombela, South Africa, focused on AI systems and offline-capable software for environments with limited connectivity.
 
-[chatterbolic.co.za](https://chatterbolic.co.za)
+Taariq is the founder of **Chatterbolic Solutions**, a software company specialising in AI automation and custom systems. Kiwi is an open-source project authored by Taariq under the Chatterbolic banner.
+
+- **GitHub:** [@Taariqmornings](https://github.com/Taariqmornings)
+- **Company:** [chatterbolic.co.za](https://chatterbolic.co.za)
+
+If you build something with Kiwi or want to collaborate, feel free to reach out or open an issue.
