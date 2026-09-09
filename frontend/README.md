@@ -8,7 +8,7 @@ React 19, TypeScript, Vite and Electron.
 | Layer | Technology |
 |---|---|
 | UI | React 19, TypeScript, Tailwind CSS 4 |
-| Build / dev server | Vite |
+| Build / dev server | Vite 8 (requires Node.js 20.19+) |
 | Desktop shell | Electron 30 |
 | Tests | Vitest + Testing Library |
 

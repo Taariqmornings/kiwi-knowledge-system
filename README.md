@@ -8,7 +8,7 @@ Created and maintained by **[Taariq Ebrahim](https://github.com/Taariqmornings)*
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Taariqmornings/kiwi-knowledge-system/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab.svg)](#prerequisites)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933.svg)](#prerequisites)
+[![Node.js](https://img.shields.io/badge/Node.js-20.19%2B-339933.svg)](#prerequisites)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](#tech-stack)
 
 ---
@@ -149,7 +149,7 @@ Search for terms like **photosynthesis**, **python**, **quantum**, **gravity**, 
 | Tool | Version | Notes |
 |---|---|---|
 | Python | 3.10+ | Must be in `PATH` |
-| Node.js | 18+ | Includes `npm` |
+| Node.js | 20.19+ | Includes `npm` |
 | Git | any | — |
 | Ollama | latest | **Optional** — only needed for AI chat |
 

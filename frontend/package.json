@@ -4,6 +4,9 @@
   "version": "1.2.0",
   "description": "Kiwi — offline knowledge browser. Index ZIM archives, search millions of articles offline, and chat with a local AI.",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "author": {
     "name": "Taariq Ebrahim",
     "email": "taariq@gmail.com",

@@ -18,6 +18,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 - **Frontend `npm run lint` now passes** (23 previously-failing React Hooks / `no-empty` / fast-refresh issues fixed).
 - **Backend test suite is green** (38 tests) — the pagination test fixture now matches the app's content-length filter.
 - **CI installs `libzim`** for the backend job instead of stripping it (it ships Linux wheels) — the backend job previously failed at collection.
+- **CI now runs the frontend on Node 20/22** (Vite 8 / ESLint 10 / Vitest 4 require Node 20.19+), installs the new `requirements-dev.txt` (adds `httpx` for the FastAPI test client), and uses an `.mjs` ESLint config that loads on every supported Node version.
 - **Alembic migrations now target the app's real `DATABASE_PATH`** instead of a working-directory-relative default (`alembic/env.py`).
 - Frontend `build` no longer emits a >1 MB chunk warning: vendor libraries are code-split (`vite.config.ts`) and `highlight.js` loads a focused language subset.
 

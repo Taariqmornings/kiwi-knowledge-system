@@ -10,7 +10,7 @@ By contributing to this repository, you help make offline information search and
 
 ### 📋 Prerequisites
 Before you begin, ensure you have the following installed on your machine:
-- **Node.js** (v18.0 or higher) & **npm** (v9.0 or higher)
+- **Node.js** (v20.19 or higher) & **npm** (v10 or higher)
 - **Python** (v3.10 or higher)
 - **Ollama** (locally installed and running: `ollama serve`)
   - Pull the default model: `ollama pull gemma3:1b`
