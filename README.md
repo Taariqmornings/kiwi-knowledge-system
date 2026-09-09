@@ -439,6 +439,5 @@ Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 Taariq is the founder of **Chatterbolic Solutions**, a software company specialising in AI automation and custom systems. Kiwi is an open-source project authored by Taariq under the Chatterbolic banner.
 
 - **GitHub:** [@Taariqmornings](https://github.com/Taariqmornings)
-- **Company:** [chatterbolic.co.za](https://chatterbolic.co.za)
 
 If you build something with Kiwi or want to collaborate, feel free to reach out or open an issue.
