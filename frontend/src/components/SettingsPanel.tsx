@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { api } from "../services/api";
 import { useToast } from "./Toast";
+import { VERSION } from "../version";
 import { useReaderPrefs, type ColumnWidth, type ReaderTheme } from "../hooks/useReaderPrefs";
 
 interface Health {
@@ -286,7 +287,7 @@ export function SettingsPanel() {
 
               <Card title="About Kiwi" desc="Offline-first knowledge browser for ZIM archives.">
                 <div className="settings-stat-grid">
-                  <Stat label="Version" value="1.0.0" tint="default" />
+                  <Stat label="Version" value={VERSION} tint="default" />
                   <Stat label="Privacy" value="100% local" tint="success" />
                 </div>
               </Card>

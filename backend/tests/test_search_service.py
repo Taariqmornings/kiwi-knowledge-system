@@ -52,19 +52,19 @@ def seeded_db(db_session):
 
     _seed_article(db_session, "test-archive-001",
                   "Python Programming", "A/python.html",
-                  "Python is a programming language",
+                  "Python is a high-level, general-purpose programming language",
                   "python | programming | language")
     _seed_article(db_session, "test-archive-001",
                   "Machine Learning", "A/ml.html",
-                  "Machine learning is a subset of AI",
+                  "Machine learning is a subset of artificial intelligence that lets computers learn from data",
                   "machine | learning | AI")
     _seed_article(db_session, "test-archive-001",
                   "React Native", "A/react.html",
-                  "React Native for mobile development",
+                  "React Native is a JavaScript framework for building mobile applications for iOS and Android",
                   "react | native | mobile")
     _seed_article(db_session, "test-archive-001",
                   "Deep Learning Guide", "A/deep.html",
-                  "Deep learning uses neural networks",
+                  "Deep learning uses neural networks with many layers to model complex patterns in data",
                   "deep | learning | neural")
     db_session.commit()
     return db_session

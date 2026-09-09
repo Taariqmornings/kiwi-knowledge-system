@@ -1,3 +1,4 @@
+import html as _html
 import posixpath
 import re
 import urllib.parse
@@ -192,8 +193,10 @@ class TransformerService:
         kiwi_js = cls._kiwi_js(archive_id, current_page_path, backend_url)
 
         # Article header card injected at the top of the content
+        esc_title = _html.escape(title)
+        esc_archive = _html.escape(archive_title)
         archive_badge = (
-            f'<span class="kiwi-archive-badge">{archive_title}</span>'
+            f'<span class="kiwi-archive-badge">{esc_archive}</span>'
             if archive_title
             else ""
         )
@@ -202,9 +205,9 @@ class TransformerService:
             <div class="kiwi-breadcrumb">
                 {archive_badge}
                 <span class="kiwi-breadcrumb-sep">›</span>
-                <span class="kiwi-breadcrumb-current">{title}</span>
+                <span class="kiwi-breadcrumb-current">{esc_title}</span>
             </div>
-            <h1 class="kiwi-title">{title}</h1>
+            <h1 class="kiwi-title">{esc_title}</h1>
             <div class="kiwi-meta">
                 <span class="kiwi-meta-item">📖 {reading_minutes} min read</span>
                 <span class="kiwi-meta-item">{word_count:,} words</span>
@@ -217,7 +220,7 @@ class TransformerService:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{esc_title}</title>
     {"".join(zim_head_html)}
     <style>{kiwi_css}</style>
 </head>
@@ -274,14 +277,22 @@ class TransformerService:
             else "kiwi-sepia" if theme == "sepia"
             else "kiwi-light"
         )
+        # All interpolated values are HTML-escaped: title/reason/hint can carry
+        # article-derived text (or reflected request data) and must never inject
+        # markup into the page.
+        esc_title = _html.escape(title)
+        esc_reason = _html.escape(reason)
+        esc_hint = _html.escape(hint)
+        esc_archive = _html.escape(archive_title)
         # Reuse the reader CSS so the empty state matches the rest of the app.
         css = cls._kiwi_css()
-        badge = f'<span class="kiwi-archive-badge">{archive_title}</span>' if archive_title else ""
+        badge = f'<span class="kiwi-archive-badge">{esc_archive}</span>' if archive_title else ""
         # Optional "Try one of these instead" grid
         sug_html = ""
         if suggestions:
             items = "".join(
-                f'<a class="kiwi-sug-card" href="{s.get("href", "#")}"><div class="kiwi-sug-title">{s.get("title", "")}</div></a>'
+                f'<a class="kiwi-sug-card" href="{_html.escape(s.get("href", "#"), quote=True)}">'
+                f'<div class="kiwi-sug-title">{_html.escape(str(s.get("title", "")))}</div></a>'
                 for s in suggestions
             )
             sug_html = (
@@ -292,7 +303,7 @@ class TransformerService:
 <html lang="en" class="{theme_class}">
 <head>
     <meta charset="UTF-8">
-    <title>{title}</title>
+    <title>{esc_title}</title>
     <style>{css}</style>
     <style>
         .kiwi-empty-card {{
@@ -375,15 +386,15 @@ class TransformerService:
         <div class="kiwi-article-header">
             <div class="kiwi-breadcrumb">
                 {badge}<span class="kiwi-breadcrumb-sep">›</span>
-                <span class="kiwi-breadcrumb-current">{title}</span>
+                <span class="kiwi-breadcrumb-current">{esc_title}</span>
             </div>
-            <h1 class="kiwi-title">{title}</h1>
+            <h1 class="kiwi-title">{esc_title}</h1>
         </div>
         <div class="kiwi-empty-card">
             <div class="kiwi-empty-icon">📭</div>
             <div class="kiwi-empty-title">No content to display</div>
-            <p class="kiwi-empty-reason">{reason}</p>
-            <p class="kiwi-empty-hint">{hint}</p>
+            <p class="kiwi-empty-reason">{esc_reason}</p>
+            <p class="kiwi-empty-hint">{esc_hint}</p>
             {sug_html}
         </div>
     </div>

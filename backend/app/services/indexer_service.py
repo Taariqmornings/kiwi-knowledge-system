@@ -175,9 +175,9 @@ class IndexerService:
         if not to_index:
             return
 
-        print(
-            f"[AutoIndex] Queued {len(to_index)} archive(s) "
-            f"(max {cls.MAX_CONCURRENT_INDEXERS} concurrent)."
+        logger.info(
+            "Queued %s archive(s) (max %s concurrent).",
+            len(to_index), cls.MAX_CONCURRENT_INDEXERS,
         )
 
         slots = threading.Semaphore(cls.MAX_CONCURRENT_INDEXERS)
@@ -190,13 +190,13 @@ class IndexerService:
                     fresh = db.query(Archive).filter(Archive.id == archive.id).first()
                     if not fresh or fresh.status != "idle":
                         return
-                    print(
-                        f"[AutoIndex] Starting: {archive.name} "
-                        f"({archive.size_bytes // (1024*1024)} MB)"
+                    logger.info(
+                        "Starting: %s (%s MB)",
+                        archive.name, archive.size_bytes // (1024 * 1024),
                     )
                     cls.resume_indexing(db, archive.id)
                 except Exception as e:
-                    print(f"[AutoIndex] Could not start {archive.name}: {e}")
+                    logger.warning("Could not start %s: %s", archive.name, e)
                     return
                 finally:
                     db.close()
@@ -457,7 +457,7 @@ def _index_worker(archive_id: str, job_id: int):
                     time.sleep(IndexerService.INDEXER_YIELD_MS / 1000.0)
 
             except Exception as entry_err:
-                print(f"[Indexer] Skipping entry {idx} in {archive.name}: {entry_err}")
+                logger.warning("Skipping entry %s in %s: %s", idx, archive.name, entry_err)
                 # Make sure session isn't left in a poisoned state
                 try: db.rollback()
                 except Exception: pass
@@ -478,7 +478,7 @@ def _index_worker(archive_id: str, job_id: int):
         job_registry.update_job_status(db, job_id, "completed", progress=actual)
 
     except Exception as e:
-        print(f"Indexing error on archive {archive_id}: {e}")
+        logger.warning("Indexing error on archive %s: %s", archive_id, e)
         db.rollback()
         job_registry.update_job_status(db, job_id, "failed", error_message=str(e))
         try:

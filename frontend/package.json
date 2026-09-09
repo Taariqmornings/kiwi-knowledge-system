@@ -1,7 +1,14 @@
 {
-  "name": "frontend",
+  "name": "kiwi",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.2.0",
+  "description": "Kiwi — offline knowledge browser. Index ZIM archives, search millions of articles offline, and chat with a local AI.",
+  "license": "MIT",
+  "author": {
+    "name": "Taariq Ebrahim",
+    "email": "taariq@gmail.com",
+    "url": "https://github.com/Taariqmornings"
+  },
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -20,8 +27,8 @@
     "react-dom": "^19.2.6"
   },
   "build": {
-    "appId": "com.knowledge-system.app",
-    "productName": "Knowledge Intelligence System",
+    "appId": "io.github.taariqmornings.kiwi",
+    "productName": "Kiwi",
     "directories": {
       "output": "release"
     },
@@ -38,7 +45,10 @@
           "**/*",
           "!venv/**",
           "!__pycache__/**",
-          "!*.pyc"
+          "!*.pyc",
+          "!data/**",
+          "!tests/**",
+          "!**/.pytest_cache/**"
         ]
       }
     ],
@@ -47,19 +57,19 @@
         "portable",
         "nsis"
       ],
-      "icon": "public/favicon.svg"
+      "icon": "build/icon.png"
     },
     "mac": {
       "target": [
         "dmg"
       ],
-      "icon": "public/favicon.svg"
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "icon": "public/favicon.svg"
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,

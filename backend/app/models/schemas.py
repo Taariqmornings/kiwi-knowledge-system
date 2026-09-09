@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -7,8 +7,7 @@ class CategorySchema(BaseModel):
     name: str
     icon: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ArchiveSchema(BaseModel):
     id: str
@@ -27,8 +26,7 @@ class ArchiveSchema(BaseModel):
     created_at: datetime
     categories: List[CategorySchema] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ArticleResultSchema(BaseModel):
     id: int
@@ -43,8 +41,7 @@ class ArticleResultSchema(BaseModel):
     title_highlight: Optional[str] = None
     snippet: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AutocompleteItem(BaseModel):
     title: str
@@ -81,8 +78,7 @@ class IndexJobResponse(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ScanDirectoryRequest(BaseModel):
     directory: str

@@ -1,5 +1,6 @@
 import os
 import hashlib
+import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
@@ -7,6 +8,8 @@ from libzim.reader import Archive as ZimArchive
 
 from app.database_models import Archive, Category, archive_categories
 from app.core.config import ZIM_DIR
+
+logger = logging.getLogger(__name__)
 
 # Keyword lists used to auto-assign categories when a ZIM file is registered.
 # Matching is case-insensitive against title + description + filename + filename stem (underscore-split).
@@ -202,7 +205,7 @@ class ArchiveService:
                 cls._auto_categorize(db, new_archive, meta["title"], meta["description"], Path(abs_path).name)
                 results.append(new_archive)
             except Exception as e:
-                print(f"[ArchiveService] Failed to add {abs_path}: {e}")
+                logger.warning("Failed to add %s: %s", abs_path, e)
                 db.rollback()
         return results
 
@@ -253,7 +256,7 @@ class ArchiveService:
                 cls._auto_categorize(db, new_archive, meta["title"], meta["description"], file_path.name)
                 imported_archives.append(new_archive)
             except Exception as e:
-                print(f"[ArchiveService] Failed to scan {abs_path}: {e}")
+                logger.warning("Failed to scan %s: %s", abs_path, e)
                 db.rollback()
 
         return imported_archives

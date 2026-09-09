@@ -135,7 +135,7 @@ export function AppProvider({ children, onNavigate }: Props) {
           { id: `${archiveId}-${path}`, title, path, archiveId },
           ...filtered,
         ].slice(0, 20);
-        try { localStorage.setItem("kiwi-recent", JSON.stringify(next)); } catch {}
+        try { localStorage.setItem("kiwi-recent", JSON.stringify(next)); } catch { /* non-fatal */ }
         return next;
       });
     },
@@ -179,7 +179,9 @@ export function AppProvider({ children, onNavigate }: Props) {
 
   // Keep activeTabId consistent when tabs change
   const activeTabIdRef = useRef(activeTabId);
-  activeTabIdRef.current = activeTabId;
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
   useEffect(() => {
     const stillExists = tabs.some(t => t.id === activeTabIdRef.current);
     if (!stillExists && tabs.length > 0) {
@@ -228,7 +230,7 @@ export function AppProvider({ children, onNavigate }: Props) {
       return;
     }
     setScanPathPersisted(trimmed);
-    try { await api.updateSettings({ zim_scan_path: trimmed }); } catch {}
+    try { await api.updateSettings({ zim_scan_path: trimmed }); } catch { /* non-critical — path persists locally anyway */ }
 
     setIsScanning(true);
     try {
@@ -237,7 +239,7 @@ export function AppProvider({ children, onNavigate }: Props) {
 
       const idle = data.filter(a => a.status === "idle");
       for (const archive of idle) {
-        try { await api.startIndexing(archive.id); } catch {}
+        try { await api.startIndexing(archive.id); } catch { /* indexing failures surface via toast/status */ }
       }
 
       const msg = idle.length > 0
@@ -281,7 +283,7 @@ export function AppProvider({ children, onNavigate }: Props) {
       });
       const idle = data.filter(a => a.status === "idle");
       for (const archive of idle) {
-        try { await api.startIndexing(archive.id); } catch {}
+        try { await api.startIndexing(archive.id); } catch { /* indexing failures surface via toast/status */ }
       }
       showToast(
         idle.length > 0
@@ -352,7 +354,7 @@ export function AppProvider({ children, onNavigate }: Props) {
       try {
         const s = await api.getSettings();
         if (s.zim_scan_path) setScanPathPersisted(s.zim_scan_path);
-      } catch {}
+      } catch { /* settings unavailable — fall back to defaults */ }
       await Promise.all([fetchArchives(), fetchCategories()]);
     };
     init();
@@ -409,6 +411,7 @@ export function AppProvider({ children, onNavigate }: Props) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppContext(): AppContextValue {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useAppContext must be used within AppProvider");

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAppContext } from "../context/AppContext";
-import { api } from "../services/api";
+import { api, getBackendHost } from "../services/api";
 import * as Icons from "./Icons";
 import type { Article, Suggestion } from "../types";
 
@@ -9,6 +9,40 @@ const CATEGORY_ICONS: Record<string, string> = {
   Globe: "🌍", Code: "💻", Calculator: "📐", Flame: "🔥",
   GraduationCap: "🎓", Library: "📚",
 };
+
+interface SearchMeta {
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+const EMPTY_META: SearchMeta = {
+  total_count: 0, page: 1, page_size: 30, total_pages: 1,
+  has_next: false, has_previous: false,
+};
+
+// Fallback label shown in the error hint before the real host resolves.
+const DEFAULT_HOST_LABEL = "http://127.0.0.1:8000";
+
+function Pagination({ meta, onPage }: { meta: SearchMeta; onPage: (p: number) => void }) {
+  if (meta.total_pages <= 1) return null;
+  const start = Math.max(1, meta.page - 2), end = Math.min(meta.total_pages, meta.page + 2);
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  return (
+    <div className="flex items-center justify-center gap-1 mt-6 mb-2">
+      <button className="btn btn-secondary btn-sm" disabled={!meta.has_previous} onClick={() => onPage(meta.page - 1)}><Icons.ArrowLeft /></button>
+      {start > 1 && <span className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>…</span>}
+      {pages.map(p => (
+        <button key={p} className={`btn btn-sm ${p === meta.page ? "btn-primary" : "btn-secondary"}`} onClick={() => onPage(p)}>{p}</button>
+      ))}
+      {end < meta.total_pages && <span className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>…</span>}
+      <button className="btn btn-secondary btn-sm" disabled={!meta.has_next} onClick={() => onPage(meta.page + 1)}><Icons.ArrowRight /></button>
+    </div>
+  );
+}
 
 export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: string) => void; onOpenChat?: () => void }) {
   const {
@@ -19,14 +53,20 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Article[]>([]);
-  const [meta, setMeta] = useState({ total_count: 0, page: 1, page_size: 30, total_pages: 1, has_next: false, has_previous: false });
+  const [meta, setMeta] = useState<SearchMeta>(EMPTY_META);
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(-1);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [backendUrl, setBackendUrl] = useState(DEFAULT_HOST_LABEL);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Resolve the backend URL for the "Search failed" hint box.
+  useEffect(() => {
+    getBackendHost().then(setBackendUrl).catch(() => { /* keep default label */ });
+  }, []);
 
   // Dismiss the suggestion dropdown only on EXPLICIT user intent:
   //   • Esc key
@@ -48,17 +88,30 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [showSuggestions]);
 
+  // Clear suggestions once the query drops below the autocomplete length.
+  if (query.trim().length < 2 && suggestions.length > 0) {
+    setSuggestions([]);
+  }
+
   useEffect(() => {
-    if (query.trim().length < 2) { setSuggestions([]); return; }
+    if (query.trim().length < 2) return;
+    let cancelled = false;
     const t = setTimeout(async () => {
-      try { const d = await api.autocomplete(query); setSuggestions(d.suggestions || []); }
-      catch (err) { console.error("Autocomplete failed:", err); }
+      try {
+        const d = await api.autocomplete(query);
+        if (!cancelled) setSuggestions(d.suggestions || []);
+      } catch (err) {
+        console.error("Autocomplete failed:", err);
+        if (!cancelled) setSuggestions([]);
+      }
     }, 150);
-    return () => clearTimeout(t);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [query]);
 
-  const applyMeta = (d: typeof meta) =>
-    setMeta({ total_count: d.total_count, page: d.page, page_size: d.page_size, total_pages: d.total_pages, has_next: d.has_next, has_previous: d.has_previous });
+  const applyMeta = (d: SearchMeta) => setMeta({
+    total_count: d.total_count, page: d.page, page_size: d.page_size,
+    total_pages: d.total_pages, has_next: d.has_next, has_previous: d.has_previous,
+  });
 
   const runSearch = useCallback(async (q: string, catId?: number, page = 1) => {
     if (!q.trim()) { setResults([]); setSearchError(null); return; }
@@ -71,7 +124,7 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
       else if (activeCategory) params.categoryId = activeCategory.id;
       const d = await api.search(q, { ...params, pageSize: 30 });
       setResults(d.results || []);
-      applyMeta(d as typeof meta);
+      applyMeta(d);
     } catch (err) {
       console.error("Search failed:", err);
       setSearchError(err instanceof Error ? err.message : "Search request failed");
@@ -88,7 +141,7 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
     try {
       const d = await api.browseCategory(catId, { page, pageSize: 30 });
       setResults(d.results || []);
-      applyMeta(d as typeof meta);
+      applyMeta(d);
     } catch (err) {
       console.error("Browse failed:", err);
       setSearchError(err instanceof Error ? err.message : "Category browse failed");
@@ -98,9 +151,14 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
     }
   }, []);
 
+  // Clear stale results when the query is emptied.
+  if (!query.trim() && results.length > 0) {
+    setResults([]);
+    setMeta(EMPTY_META);
+  }
+
   // Auto-search as user types (debounced) — Google-style live search
   useEffect(() => {
-    if (!query.trim()) { setResults([]); setMeta({ total_count: 0, page: 1, page_size: 30, total_pages: 1, has_next: false, has_previous: false }); return; }
     if (query.trim().length < 2) return;
     const t = setTimeout(() => { runSearch(query); }, 350);
     return () => clearTimeout(t);
@@ -128,23 +186,6 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
   };
 
   const isBookmarked = (r: Article) => bookmarks.some(b => b.path === r.path && b.archiveId === r.archive_id);
-
-  const Pagination = () => {
-    if (meta.total_pages <= 1) return null;
-    const start = Math.max(1, meta.page - 2), end = Math.min(meta.total_pages, meta.page + 2);
-    const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-    return (
-      <div className="flex items-center justify-center gap-1 mt-6 mb-2">
-        <button className="btn btn-secondary btn-sm" disabled={!meta.has_previous} onClick={() => goToPage(meta.page - 1)}><Icons.ArrowLeft /></button>
-        {start > 1 && <span className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>…</span>}
-        {pages.map(p => (
-          <button key={p} className={`btn btn-sm ${p === meta.page ? "btn-primary" : "btn-secondary"}`} onClick={() => goToPage(p)}>{p}</button>
-        ))}
-        {end < meta.total_pages && <span className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>…</span>}
-        <button className="btn btn-secondary btn-sm" disabled={!meta.has_next} onClick={() => goToPage(meta.page + 1)}><Icons.ArrowRight /></button>
-      </div>
-    );
-  };
 
   const noArchives = archives.length === 0;
 
@@ -297,7 +338,7 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Search failed</div>
             <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{searchError}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 8 }}>
-              Backend URL: <code>http://127.0.0.1:8000</code>. If this persists, the backend may not be running.
+              Backend URL: <code>{backendUrl}</code>. If this persists, the backend may not be running.
             </div>
           </div>
         )}
@@ -338,7 +379,7 @@ export function SearchPanel({ onNavigate, onOpenChat }: { onNavigate: (view: str
                 </div>
               ))}
             </div>
-            <Pagination />
+            <Pagination meta={meta} onPage={goToPage} />
           </>
         )}
 

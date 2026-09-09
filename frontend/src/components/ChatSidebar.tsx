@@ -1,9 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { marked } from "marked";
-import hljs from "highlight.js";
+import hljs from "highlight.js/lib/core";
 import "highlight.js/styles/github-dark.css";
 import { useAppContext } from "../context/AppContext";
+import { api } from "../services/api";
 import * as Icons from "./Icons";
+
+// Register a focused subset of languages — importing the full highlight.js
+// bundle pulls in every language and balloons the vendor chunk.
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
+import css from "highlight.js/lib/languages/css";
+import xml from "highlight.js/lib/languages/xml";
+import sql from "highlight.js/lib/languages/sql";
+import markdown from "highlight.js/lib/languages/markdown";
+import cpp from "highlight.js/lib/languages/cpp";
+import java from "highlight.js/lib/languages/java";
+import go from "highlight.js/lib/languages/go";
+import rust from "highlight.js/lib/languages/rust";
+
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("shell", bash);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("markdown", markdown);
+hljs.registerLanguage("md", markdown);
+hljs.registerLanguage("cpp", cpp);
+hljs.registerLanguage("c++", cpp);
+hljs.registerLanguage("java", java);
+hljs.registerLanguage("go", go);
+hljs.registerLanguage("rust", rust);
 
 marked.setOptions({ gfm: true, breaks: true });
 const markedRenderer = new marked.Renderer();
@@ -108,21 +146,20 @@ export function ChatSidebar({ open, onClose }: { open: boolean; onClose: () => v
   // independently, so a freshly-created conversation won't be in the
   // persisted list and activeId ends up "" — which would make every
   // updateActive() filter match zero rows and silently drop messages.
-  useEffect(() => {
-    if (conversations.length === 0) return;
-    if (!conversations.find(c => c.id === activeId)) {
-      setActiveId(conversations[0].id);
-    }
-  }, [conversations, activeId]);
+  // Resolved during render (React's derived-state pattern) so no effect
+  // has to mutate state as a side effect.
+  if (conversations.length > 0 && !conversations.some(c => c.id === activeId)) {
+    setActiveId(conversations[0].id);
+  }
 
   // Persist
   useEffect(() => {
     try {
       localStorage.setItem(CONVS_KEY, JSON.stringify(conversations.slice(0, MAX_CONVS)));
-    } catch {}
+    } catch { /* quota / storage errors are non-fatal */ }
   }, [conversations]);
   useEffect(() => {
-    try { if (activeId) localStorage.setItem(ACTIVE_KEY, activeId); } catch {}
+    try { if (activeId) localStorage.setItem(ACTIVE_KEY, activeId); } catch { /* non-fatal */ }
   }, [activeId]);
 
   // ── Streaming state ────────────────────────────────────────────────
@@ -242,12 +279,10 @@ export function ChatSidebar({ open, onClose }: { open: boolean; onClose: () => v
     abortRef.current = ctrl;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/chat/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: question.trim(), history: historySnapshot }),
-        signal: ctrl.signal,
-      });
+      const res = await api.askChat(
+        { question: question.trim(), history: historySnapshot },
+        ctrl.signal,
+      );
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
       const reader = res.body.getReader();
@@ -287,7 +322,7 @@ export function ChatSidebar({ open, onClose }: { open: boolean; onClose: () => v
             try {
               const parsed = JSON.parse(data);
               if (typeof parsed === "string") piece = parsed;
-            } catch {}
+            } catch { /* not JSON — treat as raw text */ }
             updateActive(c => ({
               ...c,
               messages: c.messages.map(m =>
@@ -349,7 +384,7 @@ export function ChatSidebar({ open, onClose }: { open: boolean; onClose: () => v
       const list: Source[] = JSON.parse(sources);
       const src = list.find(s => s.n === n);
       if (src) openArticleInTab(src.title, src.path, src.archive_id);
-    } catch {}
+    } catch { /* malformed or missing source payload — ignore */ }
   }, [openArticleInTab]);
 
   // ── Render markdown answer with citation chips ─────────────────────

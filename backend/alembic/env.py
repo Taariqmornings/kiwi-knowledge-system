@@ -15,6 +15,11 @@ from app.database_models import Archive, Category, Article, IndexJob, archive_ca
 
 config = context.config
 
+# Ensure migrations always run against the same database the app uses,
+# regardless of the process working directory or a DATABASE_PATH override.
+from app.core.config import DATABASE_PATH  # noqa: E402
+config.set_main_option("sqlalchemy.url", f"sqlite:///{DATABASE_PATH}")
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

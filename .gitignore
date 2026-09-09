@@ -32,6 +32,8 @@ dist-ssr/
 frontend/dist-ssr/
 frontend/.eslintcache
 frontend/vite.config.ts.timestamp-*
+frontend/release/
+frontend/electron-builder.*
 
 # --- Python Backend ---
 __pycache__/

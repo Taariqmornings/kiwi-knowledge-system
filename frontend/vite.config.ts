@@ -13,5 +13,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        // Split the heavy vendor libraries out of the main bundle so the app
+        // shell loads faster and the chunks stay under the warning threshold.
+        advancedChunks: {
+          groups: [
+            { name: 'react-vendor', test: /node_modules[\\/](react|react-dom)[\\/]/ },
+            { name: 'markdown-vendor', test: /node_modules[\\/](marked|highlight\.js)[\\/]/ },
+          ],
+        },
+      },
+    },
   },
 })

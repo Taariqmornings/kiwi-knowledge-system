@@ -240,6 +240,12 @@ Copy `.env.example` to `.env` — all variables are optional with sensible defau
 | `RATE_LIMIT_PER_MINUTE` | `60` | API rate limit per IP |
 | `KIWI_FORCE_DEV` | `0` | Set to `1` to force Electron to load the Vite dev server |
 
+**Frontend-only variable** (set in `frontend/.env`, used by the Vite build):
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_BACKEND_URL` | `http://127.0.0.1:8000` | Backend URL used in **browser mode** (the Electron app gets its URL via IPC) |
+
 ---
 
 ## AI Chat Setup (Optional)

@@ -16,13 +16,14 @@ interface CommandItem {
  * Searches across archives, bookmarks, recently viewed, navigation,
  * and matching ZIM articles. Single keyboard-driven entry point to
  * everything in the app.
+ *
+ * The parent only mounts this component while the palette is open, so
+ * all state (query, selection, hits) is naturally fresh on every open.
  */
 export function CommandPalette({
-  open,
   onClose,
   onNavigate,
 }: {
-  open: boolean;
   onClose: () => void;
   onNavigate: (view: string) => void;
 }) {
@@ -35,22 +36,24 @@ export function CommandPalette({
   const [searchHits, setSearchHits] = useState<CommandItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset state every time the palette opens
+  // Focus the input on mount (the palette just opened).
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setSelected(0);
-      setSearchHits([]);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open]);
+    inputRef.current?.focus();
+  }, []);
+
+  // Clear hits once the query drops below the searchable length.
+  if (query.trim().length < 2 && searchHits.length > 0) {
+    setSearchHits([]);
+  }
 
   // Live fetch matching articles from the search API
   useEffect(() => {
-    if (!open || query.trim().length < 2) { setSearchHits([]); return; }
+    if (query.trim().length < 2) return;
+    let cancelled = false;
     const t = setTimeout(async () => {
       try {
         const d = await api.search(query, { pageSize: 6 });
+        if (cancelled) return;
         setSearchHits(
           d.results.map(r => ({
             id: `art-${r.id}`,
@@ -60,10 +63,12 @@ export function CommandPalette({
             action: () => { openArticleInTab(r.title, r.path, r.archive_id); onClose(); },
           }))
         );
-      } catch { setSearchHits([]); }
+      } catch {
+        if (!cancelled) setSearchHits([]);
+      }
     }, 220);
-    return () => clearTimeout(t);
-  }, [query, open, openArticleInTab, onClose]);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query, openArticleInTab, onClose]);
 
   // Build base items (always present)
   const baseItems = useMemo<CommandItem[]>(() => {
@@ -156,7 +161,6 @@ export function CommandPalette({
 
   // Keyboard nav
   useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); onClose(); }
       else if (e.key === "ArrowDown") {
@@ -173,9 +177,7 @@ export function CommandPalette({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, filtered, selected, onClose]);
-
-  if (!open) return null;
+  }, [filtered, selected, onClose]);
 
   return (
     <div

@@ -101,9 +101,12 @@ def update_job_status(
 
 
 def get_all_active_jobs(db: Session) -> list[IndexJob]:
+    # "indexing" is the live status the worker writes while it parses batches
+    # (start_job first sets "running"); all four must count as active so that
+    # pause/cancel/startup-cleanup always see in-flight work.
     return (
         db.query(IndexJob)
-        .filter(IndexJob.status.in_(["pending", "running", "paused"]))
+        .filter(IndexJob.status.in_(["pending", "running", "paused", "indexing"]))
         .all()
     )
 
@@ -118,7 +121,7 @@ def start_job(archive_id: str, worker_fn, *, db_session=None) -> Optional[int]:
     db = db_session or SessionLocal()
     try:
         latest = get_latest_job(db, archive_id)
-        if latest and latest.status in ("running",):
+        if latest and latest.status in ("running", "indexing"):
             return None
 
         job = create_job(db, archive_id)
@@ -147,7 +150,7 @@ def start_job(archive_id: str, worker_fn, *, db_session=None) -> Optional[int]:
 def cancel_job(db: Session, archive_id: str) -> Optional[IndexJob]:
     """Mark latest job as cancelled and stop the worker."""
     job = get_latest_job(db, archive_id)
-    if job and job.status in ("pending", "running", "paused"):
+    if job and job.status in ("pending", "running", "paused", "indexing"):
         update_job_status(db, job.id, "cancelled", progress=job.progress)
 
     with _cache_lock:
@@ -161,7 +164,7 @@ def cancel_job(db: Session, archive_id: str) -> Optional[IndexJob]:
 
 def pause_job(db: Session, archive_id: str) -> Optional[IndexJob]:
     job = get_latest_job(db, archive_id)
-    if job and job.status in ("running",):
+    if job and job.status in ("running", "indexing"):
         update_job_status(db, job.id, "paused")
         with _cache_lock:
             cached = _job_cache.get(archive_id)

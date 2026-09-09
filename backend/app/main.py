@@ -17,6 +17,8 @@ logging.basicConfig(
 )
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # quiet down per-request noise
 
+logger = logging.getLogger(__name__)
+
 from app.core.config import APP_NAME, VERSION, BASE_DIR, ALLOWED_ORIGINS, RATE_LIMIT_PER_MINUTE
 from app.core.database import engine
 from app.core import settings_store
@@ -36,9 +38,9 @@ def run_migrations():
 
         alembic_cfg = Config(str(Path(BASE_DIR) / "alembic.ini"))
         command.upgrade(alembic_cfg, "head")
-        print("[Migration] Database schema up to date.")
+        logger.info("Database schema up to date.")
     except Exception as e:
-        print(f"[Migration] Warning: {e}. Falling back to create_all.")
+        logger.warning("Migration warning: %s. Falling back to create_all.", e)
         from app.core.database import Base
         Base.metadata.create_all(bind=engine)
 
@@ -66,9 +68,9 @@ def seed_categories():
                 db.add(Category(name=item["name"], icon=item["icon"]))
 
         db.commit()
-        print("[Init] Categories seeded.")
+        logger.info("Categories seeded.")
     except Exception as e:
-        print(f"[Init] Category seed failed: {e}")
+        logger.warning("Category seed failed: %s", e)
         db.rollback()
     finally:
         db.close()
@@ -117,7 +119,7 @@ async def lifespan(app: FastAPI):
         """))
 
         if not already_deduped:
-            print("[Migration] Running one-time dedup + FTS rebuild …")
+            logger.info("Running one-time dedup + FTS rebuild …")
 
             # Drop FTS triggers so the bulk DELETE doesn't fire per-row FTS
             # delete commands (which fail with "SQL logic error" when the FTS
@@ -139,9 +141,9 @@ async def lifespan(app: FastAPI):
                     )
                 """))
                 if r.rowcount and r.rowcount > 0:
-                    print(f"[Migration] Removed {r.rowcount} duplicate article rows.")
+                    logger.info("Removed %s duplicate article rows.", r.rowcount)
             except Exception as e:
-                print(f"[Migration] Article dedup skipped: {e}")
+                logger.warning("Article dedup skipped: %s", e)
 
             try:
                 conn.execute(text(
@@ -149,7 +151,7 @@ async def lifespan(app: FastAPI):
                     "ON articles(archive_id, path)"
                 ))
             except Exception as e:
-                print(f"[Migration] Unique index skipped: {e}")
+                logger.warning("Unique index skipped: %s", e)
 
             # Recompute indexed_count from real row counts.
             try:
@@ -160,18 +162,18 @@ async def lifespan(app: FastAPI):
                     )
                 """))
             except Exception as e:
-                print(f"[Migration] Recount skipped: {e}")
+                logger.warning("Recount skipped: %s", e)
 
             # Full rebuild of the FTS index from articles.  This is slow on
             # large DBs (~ 100 s per 350 K rows) but only runs ONCE per
             # installation thanks to the `already_deduped` guard.
             try:
                 conn.execute(text("INSERT INTO articles_fts(articles_fts) VALUES ('rebuild')"))
-                print("[Migration] FTS index rebuilt from articles table.")
+                logger.info("FTS index rebuilt from articles table.")
             except Exception as e:
-                print(f"[Migration] FTS rebuild skipped: {e}")
+                logger.warning("FTS rebuild skipped: %s", e)
         else:
-            print("[Migration] Unique-index present — skipping dedup + FTS rebuild.")
+            logger.info("Unique-index present — skipping dedup + FTS rebuild.")
 
         # Recreate triggers cleanly (idempotent).
         conn.execute(text("""
@@ -216,7 +218,7 @@ async def lifespan(app: FastAPI):
     app_settings = settings_store.load()
     zim_path = app_settings.get("zim_scan_path", "").strip()
     if zim_path and Path(zim_path).is_dir():
-        print(f"[Startup] Auto-scanning ZIM directory: {zim_path}")
+        logger.info("Auto-scanning ZIM directory: %s", zim_path)
         db = SessionLocal()
         try:
             scanned = ArchiveService.scan_directory(db, zim_path)
@@ -229,11 +231,11 @@ async def lifespan(app: FastAPI):
             import threading as _th
             _th.Thread(target=_delayed_start, daemon=True, name="kiwi-deferred-index").start()
         except Exception as e:
-            print(f"[Startup] Auto-scan error: {e}")
+            logger.warning("Auto-scan error: %s", e)
         finally:
             db.close()
     else:
-        print("[Startup] No ZIM directory configured — open Settings to set one.")
+        logger.info("No ZIM directory configured — open Settings to set one.")
 
     yield
 

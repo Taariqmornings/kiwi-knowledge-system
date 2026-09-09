@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -8,6 +8,14 @@ let backendReady = false;
 
 const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+
+// Scheme + host of the local backend. Navigation is only ever allowed to
+// these (plus the app's own file:// pages and data: loading screen).
+const ALLOWED_NAV_TARGETS = ['http://127.0.0.1:', 'http://localhost:', 'file://', 'data:'];
+
+function isAllowedNavigation(url) {
+  return ALLOWED_NAV_TARGETS.some(prefix => url.startsWith(prefix));
+}
 
 // App mode: dist/ exists → load static build (no Vite needed).
 // Dev mode: dist/ missing OR KIWI_FORCE_DEV=1 → connect to Vite dev server
@@ -95,9 +103,28 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false,          // allows file:// page to load http://127.0.0.1 iframes
-      allowRunningInsecureContent: true,
+      sandbox: true,
     },
+  });
+
+  // Only the local backend and the app's own pages may navigate the window.
+  // Anything else (a link in a ZIM article pointing to an external site) is
+  // opened in the user's default browser instead of hijacking the app.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedNavigation(url)) {
+      event.preventDefault();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        shell.openExternal(url);
+      }
+    }
+  });
+
+  // Same policy for window.open / target=_blank (e.g. article links).
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
   });
 
   mainWindow.removeMenu();

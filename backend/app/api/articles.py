@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request
 from sqlalchemy.orm import Session
 import re
 
+from app.core.config import ALLOWED_ORIGINS
 from app.core.database import get_db
 from app.database_models import Archive, Article
 from app.services.archive_service import ArchiveService
@@ -13,9 +14,18 @@ router = APIRouter(prefix="/articles", tags=["articles"])
 # Strip HTML tags + collapse whitespace for the preview endpoint
 _TAG_RE = re.compile(r"<[^>]+>")
 
-# CORS header on every article/media response so that the Electron iframe
-# (loaded from file:// context) can load content without Chromium blocking it.
-_CORS = {"Access-Control-Allow-Origin": "*"}
+# Origins the Electron iframe / file:// page is served from. The wildcard
+# header is NOT used — CORS here is limited to the app's own origins so a
+# third-party site can never read files off the local API.
+_ORIGIN_ALLOWLIST = set(ALLOWED_ORIGINS)
+
+
+def _cors_headers(request: Request) -> dict:
+    """Return per-response CORS headers restricted to the app's own origins."""
+    origin = request.headers.get("origin")
+    if origin in _ORIGIN_ALLOWLIST:
+        return {"Access-Control-Allow-Origin": origin}
+    return {}
 
 
 def _suggestions_for(db, archive_id: str, backend_url: str, n: int = 5):
@@ -36,6 +46,7 @@ def _suggestions_for(db, archive_id: str, backend_url: str, n: int = 5):
 
 def _empty_state_response(title: str, reason: str, hint: str,
                           archive_title: str, theme: str,
+                          request: Request,
                           suggestions: list | None = None) -> Response:
     """Wrap TransformerService._render_empty_state in a Response so callers
     can return a polished page from any failure path instead of a JSON 500."""
@@ -44,7 +55,18 @@ def _empty_state_response(title: str, reason: str, hint: str,
         archive_title=archive_title, theme=theme,
         suggestions=suggestions,
     )
-    return Response(content=html, media_type="text/html; charset=utf-8", headers=_CORS)
+    return Response(content=html, media_type="text/html; charset=utf-8", headers=_cors_headers(request))
+
+
+def _invalid_link_response(archive_title: str, theme: str, request: Request) -> Response:
+    """Render a safe empty-state page for a malformed / unsafe article link."""
+    return _empty_state_response(
+        title="Invalid article link",
+        reason="The link you followed isn't a valid article path inside this archive.",
+        hint="Try one of these articles from the same archive instead, or use Search.",
+        archive_title=archive_title, theme=theme,
+        request=request,
+    )
 
 
 @router.get("/{archive_id}/view/{path:path}", response_class=Response)
@@ -66,7 +88,7 @@ def view_article(
             title="Archive not found",
             reason="This archive is no longer in the database (it may have been removed).",
             hint="Go to ZIM Archives to see what's registered.",
-            archive_title="", theme=theme,
+            archive_title="", theme=theme, request=request,
         )
 
     archive_title = archive.title or archive.name
@@ -83,10 +105,12 @@ def view_article(
                 content, archive_id, path,
                 theme=theme, backend_url=backend_url, archive_title=archive_title,
             )
-            return Response(content=modernized, media_type="text/html; charset=utf-8", headers=_CORS)
+            return Response(content=modernized, media_type="text/html; charset=utf-8", headers=_cors_headers(request))
 
-        return Response(content=content, media_type=mimetype, headers=_CORS)
+        return Response(content=content, media_type=mimetype, headers=_cors_headers(request))
 
+    except ValueError:
+        return _invalid_link_response(archive_title, theme, request)
     except KeyError:
         backend_url = str(request.base_url).rstrip("/")
         return _empty_state_response(
@@ -94,6 +118,7 @@ def view_article(
             reason="That entry isn't present inside the ZIM file. It may be a broken link or a stale database record.",
             hint="Try one of these articles from the same archive instead, or use Search.",
             archive_title=archive_title, theme=theme,
+            request=request,
             suggestions=_suggestions_for(db, archive_id, backend_url),
         )
     except FileNotFoundError:
@@ -108,6 +133,7 @@ def view_article(
             reason="The original ZIM file is no longer at its registered path. The archive has been marked as failed.",
             hint="Go to Settings and re-scan the ZIM directory, or re-add the file.",
             archive_title=archive_title, theme=theme,
+            request=request,
         )
     except Exception as e:
         return _empty_state_response(
@@ -115,6 +141,7 @@ def view_article(
             reason=f"An unexpected error occurred while reading this article: {e}",
             hint="Try another article, or report this if it keeps happening.",
             archive_title=archive_title, theme=theme,
+            request=request,
         )
 
 
@@ -169,6 +196,7 @@ def article_preview(
 def get_media_asset(
     archive_id: str,
     path: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
@@ -188,7 +216,7 @@ def get_media_asset(
             return Response(
                 content=content,
                 media_type=mimetype,
-                headers={**_CORS, "Cache-Control": "public, max-age=86400"},
+                headers={**_cors_headers(request), "Cache-Control": "public, max-age=86400"},
             )
 
         # Live read from ZIM, cache result
@@ -198,9 +226,11 @@ def get_media_asset(
         return Response(
             content=content,
             media_type=mimetype,
-            headers={**_CORS, "Cache-Control": "public, max-age=86400"},
+            headers={**_cors_headers(request), "Cache-Control": "public, max-age=86400"},
         )
 
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid asset path.")
     except KeyError:
         raise HTTPException(
             status_code=404, detail=f"Asset '{path}' not found in archive."

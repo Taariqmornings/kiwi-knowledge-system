@@ -42,7 +42,7 @@ MAX_SUMMARY_LENGTH = int(os.environ.get("MAX_SUMMARY_LENGTH", "500"))
 # App metadata
 # ---------------------------------------------------------------------------
 APP_NAME = "Kiwi"
-VERSION  = "1.0.0"
+VERSION  = "1.2.0"
 
 # ---------------------------------------------------------------------------
 # CORS — restrict to known local origins.

@@ -1,4 +1,5 @@
 import { useAppContext } from "../context/AppContext";
+import { VERSION } from "../version";
 import * as Icons from "./Icons";
 
 interface SidebarProps {
@@ -78,7 +79,7 @@ export function Sidebar({ activeView, onNavigate, onCollapse }: SidebarProps) {
 
       <div className="sidebar-footer">
         <div className="text-xs text-slate-500 font-medium">
-          Kiwi v1.0
+          Kiwi v{VERSION}
         </div>
         <button className="btn btn-secondary btn-icon" onClick={toggleTheme} title="Toggle theme">
           {theme === "dark" ? <Icons.Sun /> : <Icons.Moon />}

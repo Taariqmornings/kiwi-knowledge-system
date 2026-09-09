@@ -1,6 +1,6 @@
 import asyncio
 import json
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
@@ -171,7 +171,7 @@ def cleanup_stubs(db: Session = Depends(get_db)):
     batches with the FTS triggers active so the index stays in sync.
     Recomputes indexed_count for affected archives.
     """
-    from sqlalchemy import text as _t
+    from sqlalchemy import text as _t, bindparam
     before = db.execute(_t("SELECT COUNT(*) FROM articles")).scalar() or 0
     # Capture affected archives first so we can recount only them after
     affected = [
@@ -190,7 +190,7 @@ def cleanup_stubs(db: Session = Depends(get_db)):
         if not ids:
             break
         db.execute(_t("DELETE FROM articles WHERE id IN :ids").bindparams(
-            __import__("sqlalchemy").bindparam("ids", expanding=True)
+            bindparam("ids", expanding=True)
         ), {"ids": ids})
         db.commit()
         deleted_total += len(ids)
@@ -206,7 +206,11 @@ def cleanup_stubs(db: Session = Depends(get_db)):
     return {"deleted": deleted_total, "before": before, "after": after, "archives_touched": len(affected)}
 
 @router.post("/{archive_id}/categories")
-def update_archive_categories(archive_id: str, category_ids: List[int], db: Session = Depends(get_db)):
+def update_archive_categories(
+    archive_id: str,
+    category_ids: List[int] = Body(...),
+    db: Session = Depends(get_db),
+):
     """Associate an archive with multiple educational categories."""
     archive = db.query(Archive).filter(Archive.id == archive_id).first()
     if not archive:

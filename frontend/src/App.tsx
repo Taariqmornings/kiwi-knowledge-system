@@ -10,6 +10,7 @@ import { ArchiveManager } from "./components/ArchiveManager";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatSidebar } from "./components/ChatSidebar";
+import { getBackendHost } from "./services/api";
 
 interface AppContentProps {
   activeView: string;
@@ -31,10 +32,10 @@ function AppContent({ activeView, setActiveView }: AppContentProps) {
     } catch { return true; }
   });
   useEffect(() => {
-    try { localStorage.setItem("kiwi-chat-open", chatOpen ? "1" : "0"); } catch {}
+    try { localStorage.setItem("kiwi-chat-open", chatOpen ? "1" : "0"); } catch { /* non-fatal */ }
   }, [chatOpen]);
   useEffect(() => {
-    try { localStorage.setItem("kiwi-sidebar-collapsed", sidebarCollapsed ? "1" : "0"); } catch {}
+    try { localStorage.setItem("kiwi-sidebar-collapsed", sidebarCollapsed ? "1" : "0"); } catch { /* non-fatal */ }
   }, [sidebarCollapsed]);
 
   useEffect(() => {
@@ -71,9 +72,13 @@ function AppContent({ activeView, setActiveView }: AppContentProps) {
 
     // Listen for Ctrl+K bubbled up from the article iframe
     const onMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === "kiwi-key" && e.data.key === "cmd-k") {
-        setPaletteOpen(o => !o);
-      }
+      // Only accept messages from our own backend origin.
+      getBackendHost().then(host => {
+        if (e.origin !== host) return;
+        if (e.data?.type === "kiwi-key" && e.data.key === "cmd-k") {
+          setPaletteOpen(o => !o);
+        }
+      }).catch(() => { /* backend host unavailable — ignore message */ });
     };
 
     window.addEventListener("keydown", onKey);
@@ -135,11 +140,12 @@ function AppContent({ activeView, setActiveView }: AppContentProps) {
         </ErrorBoundary>
       </main>
       <ChatSidebar open={chatOpen} onClose={() => setChatOpen(false)} />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onNavigate={setActiveView}
-      />
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          onNavigate={setActiveView}
+        />
+      )}
     </div>
   );
 }

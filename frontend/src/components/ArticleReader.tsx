@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
-import { api } from "../services/api";
+import { api, getBackendHost } from "../services/api";
 import * as Icons from "./Icons";
 import { useReaderPrefs } from "../hooks/useReaderPrefs";
 // ReaderControls moved to the Settings page — preferences sync via the
@@ -39,29 +39,46 @@ export function ArticleReader({ onToggleChat, chatOpen, sidebarCollapsed, onOpen
   const activeTab = tabs.find(t => t.id === activeTabId);
   const [articleUrl, setArticleUrl] = useState("");
   const [iframeError, setIframeError] = useState<string | null>(null);
-  const [urlLoading, setUrlLoading] = useState(false);
+  const [urlLoading, setUrlLoading] = useState(true);
   const { prefs } = useReaderPrefs();
 
   // ── Build the iframe URL when the tab changes (not on pref changes) ─
+  // Resetting the loading state in response to a tab change is done during
+  // render (the React-recommended derived-state pattern) so no effect has to
+  // synchronously write state as a side effect.
+  const tabKey = activeTab ? `${activeTab.archiveId}/${activeTab.path}` : "";
+  const [lastTabKey, setLastTabKey] = useState(tabKey);
+  if (lastTabKey !== tabKey) {
+    setLastTabKey(tabKey);
+    if (!activeTab) {
+      setArticleUrl("");
+    } else {
+      setUrlLoading(true);
+      setIframeError(null);
+    }
+  }
+
   useEffect(() => {
-    if (!activeTab) { setArticleUrl(""); return; }
-    setUrlLoading(true);
-    setIframeError(null);
+    if (!activeTab) return;
+    let cancelled = false;
     api.getArticleUrl(activeTab.archiveId, activeTab.path, prefs.theme, {
       font: prefs.fontSize,
       width: prefs.columnWidth,
     }).then(url => {
+      if (cancelled) return;
       setArticleUrl(url);
       setUrlLoading(false);
     }).catch(err => {
+      if (cancelled) return;
       setIframeError(
         `Failed to build article URL: ${err instanceof Error ? err.message : "Unknown error"}`
       );
       setUrlLoading(false);
     });
+    return () => { cancelled = true; };
     // Live pref changes go through postMessage instead of reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab?.archiveId, activeTab?.path]);
+  }, [tabKey]);
 
   // ── Push pref changes into the iframe with no page reload ─────────
   useEffect(() => {
@@ -79,68 +96,73 @@ export function ArticleReader({ onToggleChat, chatOpen, sidebarCollapsed, onOpen
     if (!activeTab) return;
 
     const onMessage = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || typeof data !== "object" || !data.type) return;
+      // Only trust messages that come from our own backend origin — a page
+      // from any other site must never be able to drive navigation here.
+      getBackendHost().then(host => {
+        if (event.origin !== host) return;
+        const data = event.data;
+        if (!data || typeof data !== "object" || !data.type) return;
 
-      if (data.type === "kiwi-navigate") {
-        const { archiveId, path, title, fromArchiveId, fromPath, fromTitle, sameTab } = data as {
-          archiveId: string; path: string; title?: string;
-          fromArchiveId?: string; fromPath?: string; fromTitle?: string;
-          sameTab?: boolean;
-        };
+        if (data.type === "kiwi-navigate") {
+          const { archiveId, path, title, fromArchiveId, fromPath, fromTitle, sameTab } = data as {
+            archiveId: string; path: string; title?: string;
+            fromArchiveId?: string; fromPath?: string; fromTitle?: string;
+            sameTab?: boolean;
+          };
 
-        // Default behaviour: open every link in a NEW tab whose history is
-        // pre-seeded with the source article — so the back arrow in the new
-        // tab returns to where the user came from, across archives.
-        // `sameTab=true` (alt-click in the iframe) overrides this for power
-        // users who want browser-style in-place navigation.
-        if (sameTab && archiveId === activeTab.archiveId) {
-          if (path === activeTab.path) return;
-          const trimmed = activeTab.history.slice(0, activeTab.historyIndex + 1);
-          trimmed.push({ path, archiveId, title: title || "Loading…" });
-          updateTab(activeTab.id, {
-            path,
-            title: title || "Loading…",
-            history: trimmed,
-            historyIndex: trimmed.length - 1,
-          });
-          return;
-        }
+          // Default behaviour: open every link in a NEW tab whose history is
+          // pre-seeded with the source article — so the back arrow in the new
+          // tab returns to where the user came from, across archives.
+          // `sameTab=true` (alt-click in the iframe) overrides this for power
+          // users who want browser-style in-place navigation.
+          if (sameTab && archiveId === activeTab.archiveId) {
+            if (path === activeTab.path) return;
+            const trimmed = activeTab.history.slice(0, activeTab.historyIndex + 1);
+            trimmed.push({ path, archiveId, title: title || "Loading…" });
+            updateTab(activeTab.id, {
+              path,
+              title: title || "Loading…",
+              history: trimmed,
+              historyIndex: trimmed.length - 1,
+            });
+            return;
+          }
 
-        const fromEntry =
-          fromArchiveId && fromPath
-            ? { archiveId: fromArchiveId, path: fromPath, title: fromTitle || activeTab.title }
-            : { archiveId: activeTab.archiveId, path: activeTab.path, title: activeTab.title };
-        openArticleInTab(title || "Loading…", path, archiveId, { from: fromEntry });
-      } else if (data.type === "kiwi-page-loaded") {
-        if (data.title && data.title !== "Loading…") {
-          updateTab(activeTab.id, { title: data.title });
-          const idx = activeTab.historyIndex;
-          if (activeTab.history[idx]) {
+          const fromEntry =
+            fromArchiveId && fromPath
+              ? { archiveId: fromArchiveId, path: fromPath, title: fromTitle || activeTab.title }
+              : { archiveId: activeTab.archiveId, path: activeTab.path, title: activeTab.title };
+          openArticleInTab(title || "Loading…", path, archiveId, { from: fromEntry });
+        } else if (data.type === "kiwi-page-loaded") {
+          if (data.title && data.title !== "Loading…") {
+            updateTab(activeTab.id, { title: data.title });
+            const idx = activeTab.historyIndex;
+            if (activeTab.history[idx]) {
+              const newHist = [...activeTab.history];
+              newHist[idx] = { ...newHist[idx], title: data.title };
+              updateTab(activeTab.id, { history: newHist });
+            }
+          }
+          // Restore saved scroll position for this history entry
+          const entry = activeTab.history[activeTab.historyIndex];
+          if (entry?.scrollPercent && iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+              { type: "kiwi-restore-scroll", percent: entry.scrollPercent },
+              "*"
+            );
+          }
+        } else if (data.type === "kiwi-scroll") {
+          // Persist the latest scroll fraction on the active history entry
+          if (typeof data.percent === "number" && activeTab.history[activeTab.historyIndex]) {
             const newHist = [...activeTab.history];
-            newHist[idx] = { ...newHist[idx], title: data.title };
+            newHist[activeTab.historyIndex] = {
+              ...newHist[activeTab.historyIndex],
+              scrollPercent: data.percent / 100, // kiwi.js sends percent 0-100
+            };
             updateTab(activeTab.id, { history: newHist });
           }
         }
-        // Restore saved scroll position for this history entry
-        const entry = activeTab.history[activeTab.historyIndex];
-        if (entry?.scrollPercent && iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage(
-            { type: "kiwi-restore-scroll", percent: entry.scrollPercent },
-            "*"
-          );
-        }
-      } else if (data.type === "kiwi-scroll") {
-        // Persist the latest scroll fraction on the active history entry
-        if (typeof data.percent === "number" && activeTab.history[activeTab.historyIndex]) {
-          const newHist = [...activeTab.history];
-          newHist[activeTab.historyIndex] = {
-            ...newHist[activeTab.historyIndex],
-            scrollPercent: data.percent / 100, // kiwi.js sends percent 0-100
-          };
-          updateTab(activeTab.id, { history: newHist });
-        }
-      }
+      }).catch(() => { /* backend host unavailable — drop the message */ });
     };
 
     window.addEventListener("message", onMessage);

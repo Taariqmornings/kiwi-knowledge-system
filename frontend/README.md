@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# Kiwi — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Desktop & web client for **Kiwi**, the offline knowledge base system. Built with
+React 19, TypeScript, Vite and Electron.
 
-Currently, two official plugins are available:
+## Tech stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Layer | Technology |
+|---|---|
+| UI | React 19, TypeScript, Tailwind CSS 4 |
+| Build / dev server | Vite |
+| Desktop shell | Electron 30 |
+| Tests | Vitest + Testing Library |
 
-## React Compiler
+## Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From the `frontend/` directory:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install        # install dependencies
+npm run dev        # start the Vite dev server (http://localhost:5173)
+npm run start      # Vite dev server + Electron window
+npm run build      # type-check + production build into dist/
+npm run lint       # ESLint
+npm run test       # Vitest unit tests
+npm run test:watch # Vitest in watch mode
+npm run electron:pack  # build + package a native installer into release/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Backend connection
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+The app talks to the FastAPI backend on `http://127.0.0.1:8000` by default.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Electron mode** — the backend URL is provided via IPC (`electronAPI.getBackendUrl()`).
+- **Browser mode** — falls back to the `VITE_BACKEND_URL` environment variable,
+  then to `http://127.0.0.1:8000`.
+
+All API access is centralised in [`src/services/api.ts`](src/services/api.ts).
+
+## Project structure
+
 ```
+frontend/
+├── electron/            # Electron main + preload processes
+├── public/              # Static assets (favicon, app icon source)
+├── build/               # Generated packaging icons
+├── src/
+│   ├── __tests__/       # Component tests
+│   ├── assets/          # (removed unused scaffold assets)
+│   ├── components/      # React components (search, reader, chat, settings…)
+│   ├── context/         # Global app state (AppContext)
+│   ├── hooks/           # Custom React hooks
+│   ├── services/        # API client
+│   ├── test/            # Test setup
+│   └── types/           # TypeScript interfaces
+├── index.html
+├── package.json
+└── vite.config.ts
+```
+
+## Tests
+
+```bash
+npm run test
+```
+
+The suite covers the API client (host resolution, request building) and the
+icon components. Component tests use Vitest with jsdom and Testing Library.
+
+## Code style
+
+- Strict TypeScript — no `any`.
+- React functional components only; global state via `AppContext`.
+- Styling in `src/index.css` using the project theme (deep slate + cyan `#0ea5e9`).
+- Run `npm run lint` before opening a pull request.

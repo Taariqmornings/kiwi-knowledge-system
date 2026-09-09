@@ -5,6 +5,35 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-09-09
+
+### Security
+- **Fixed path traversal / arbitrary local file read** in the article and media endpoints. Entry paths are now validated before any disk access (`backend/app/services/extractor_service.py`), so a crafted URL can no longer escape the extraction store.
+- **Restricted CORS** on article, media, and chat-stream responses to the app's own origins instead of `*` (`backend/app/api/articles.py`, `backend/app/api/chat.py`) — third-party pages can no longer read local content off the API.
+- **HTML-escaped all interpolated values** in the reader and empty-state pages (`transformer_service.py`), closing reflected/stored XSS from article-derived titles and request data.
+- **Hardened the Electron shell**: `webSecurity` is now enabled, `nodeIntegration` stays off, renderers are sandboxed, `window.open`/`will-navigate` are restricted to the local backend (external links open in the system browser), and `postMessage` handlers verify the sender origin.
+- **Removed raw exception text** from API error responses (`chat.py`, `articles.py`) — details are logged server-side only.
+
+### CI & Quality
+- **Frontend `npm run lint` now passes** (23 previously-failing React Hooks / `no-empty` / fast-refresh issues fixed).
+- **Backend test suite is green** (38 tests) — the pagination test fixture now matches the app's content-length filter.
+- **CI installs `libzim`** for the backend job instead of stripping it (it ships Linux wheels) — the backend job previously failed at collection.
+- **Alembic migrations now target the app's real `DATABASE_PATH`** instead of a working-directory-relative default (`alembic/env.py`).
+- Frontend `build` no longer emits a >1 MB chunk warning: vendor libraries are code-split (`vite.config.ts`) and `highlight.js` loads a focused language subset.
+
+### Packaging & Branding
+- Unified identity: `package.json` is now `kiwi` v1.1.0 with `productName: "Kiwi"`, a proper `appId`, `author`, and `license`; the in-app version string reads from a single source.
+- Added a proper PNG app icon (`frontend/build/icon.png`) for Electron packaging (SVG icons are not supported by electron-builder).
+- Packaged desktop builds now **exclude the local database, tests, and caches** from `extraResources`.
+- Frontend README rewritten (was the default Vite template), dead scaffold assets and components removed, favicon fixed, and meaningful API-client tests added.
+
+### Docs & Repo
+- Added `SECURITY.md`, `CODE_OF_CONDUCT.md`, `.gitattributes`, and `.editorconfig`.
+- Backend startup logs now use `logging` instead of `print()`.
+- `VITE_BACKEND_URL` documented for browser-mode deployments.
+
+---
+
 ## [1.1.0] — 2026-06-25
 
 ### Added

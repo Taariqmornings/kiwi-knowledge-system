@@ -14,17 +14,23 @@ declare global {
   }
 }
 
-const DEFAULT_BACKEND_HOST = "http://127.0.0.1:8000";
-let backendHost: string | null = null;
+const DEFAULT_BACKEND_HOST =
+  (import.meta.env.VITE_BACKEND_URL as string | undefined) || "http://127.0.0.1:8000";
 
-async function getBackendHost(): Promise<string> {
-  if (backendHost) return backendHost;
-  if (window.electronAPI?.isElectron) {
-    backendHost = await window.electronAPI.getBackendUrl();
-  } else {
-    backendHost = DEFAULT_BACKEND_HOST;
+let backendHostPromise: Promise<string> | null = null;
+
+/** Resolve the backend base URL (Electron IPC in the desktop app, env override
+ *  or the localhost default in browser mode). Cached after the first call. */
+export function getBackendHost(): Promise<string> {
+  if (!backendHostPromise) {
+    backendHostPromise = (async () => {
+      if (window.electronAPI?.isElectron) {
+        return await window.electronAPI.getBackendUrl();
+      }
+      return DEFAULT_BACKEND_HOST;
+    })();
   }
-  return backendHost;
+  return backendHostPromise;
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -49,10 +55,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     return await res.json();
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request to ${fullUrl} timed out after 30s. Is the backend running?`);
+      throw new Error(`Request to ${fullUrl} timed out after 30s. Is the backend running?`, { cause: err });
     }
     if (err instanceof TypeError) {
-      throw new Error(`Network error reaching ${fullUrl}: ${err.message}`);
+      throw new Error(`Network error reaching ${fullUrl}: ${err.message}`, { cause: err });
     }
     throw err;
   } finally {
@@ -191,6 +197,21 @@ export const api = {
   getIndexStream: async (archiveId: string): Promise<EventSource> => {
     const host = await getBackendHost();
     return new EventSource(`${host}/api/archives/${archiveId}/index/stream`);
+  },
+
+  // RAG chat — returns a raw fetch Response whose body is an SSE stream.
+  // The caller drives reading/aborting so it can render tokens live.
+  askChat: async (
+    payload: { question: string; history: { role: "user" | "assistant"; content: string }[] },
+    signal?: AbortSignal,
+  ) => {
+    const host = await getBackendHost();
+    return fetch(`${host}/api/chat/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    });
   },
 
   // Articles

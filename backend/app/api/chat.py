@@ -22,11 +22,12 @@ import logging
 import threading
 from typing import Iterator, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.config import ALLOWED_ORIGINS
 from app.core.database import get_db, SessionLocal
 from app.services.rag_service import RagService
 from app.services.llm_service import LlmService
@@ -53,12 +54,17 @@ def _sse(event: str, data) -> bytes:
 
 
 @router.post("/ask")
-def chat_ask(req: ChatRequest):
+def chat_ask(req: ChatRequest, request: Request):
     """SSE-stream a RAG answer to the user's question."""
     if not req.question or not req.question.strip():
         raise HTTPException(status_code=400, detail="Question is required.")
 
     question = req.question.strip()
+
+    # Restrict CORS to the app's own origins so third-party pages can never
+    # subscribe to chat streams from the user's local knowledge base.
+    origin = request.headers.get("origin")
+    cors = {"Access-Control-Allow-Origin": origin} if origin in set(ALLOWED_ORIGINS) else {}
 
     def generate() -> Iterator[bytes]:
         # ── Retrieval (always synchronous, < 100 ms) ─────────────────
@@ -105,7 +111,7 @@ def chat_ask(req: ChatRequest):
                 yield _sse("token", json.dumps(token, ensure_ascii=False))
         except Exception as e:
             logger.exception("LLM generation failed")
-            yield _sse("error", {"message": f"Generation error: {e}"})
+            yield _sse("error", {"message": "Generation failed. The model may have timed out — try again."})
 
         yield _sse("done", {})
 
@@ -116,7 +122,7 @@ def chat_ask(req: ChatRequest):
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
+            **cors,
         },
     )
 

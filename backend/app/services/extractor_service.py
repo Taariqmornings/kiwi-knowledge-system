@@ -23,35 +23,67 @@ Serving priority (articles.py):
 from __future__ import annotations
 
 import json
+import logging
+import re
 import threading
 from pathlib import Path
 from typing import Optional, Tuple
 
 from app.core.config import DATA_DIR
 
+logger = logging.getLogger(__name__)
+
 # Base extraction directory
 _BASE = Path(DATA_DIR) / "extracted"
+
+# Archive ids are generated from ZIM file paths (md5 hex digests), but the
+# guard below only needs to guarantee the value is safe to use as a single
+# path segment — no separators, no traversal, no control characters.
+_ARCHIVE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 # ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
 
+def _safe_archive_id(archive_id: str) -> str:
+    """Validate an archive id before it is used to build a disk path."""
+    if not _ARCHIVE_ID_RE.fullmatch(archive_id or ""):
+        raise ValueError("Invalid archive id")
+    return archive_id
+
+
+def _safe_zim_path(zim_path: str) -> str:
+    """Validate and normalise a ZIM entry path before it is joined to disk.
+
+    Rejects null bytes, absolute paths, and any ``..`` component so that a
+    malicious or malformed entry path can never escape the extraction store.
+    """
+    if not zim_path or "\0" in zim_path:
+        raise ValueError("Invalid entry path")
+    # Normalise separators and strip a leading slash.
+    cleaned = zim_path.replace("\\", "/").lstrip("/")
+    # Decode URL-encoded sequences that could mask traversal.
+    cleaned = cleaned.replace("%2e", ".").replace("%2E", ".")
+    if cleaned.startswith("/") or ".." in cleaned.split("/"):
+        raise ValueError("Unsafe entry path")
+    return cleaned
+
+
 def _html_path(archive_id: str, zim_path: str) -> Path:
     """Map a ZIM entry path to its on-disk HTML file path."""
-    # Normalise: replace backslashes, strip leading slash
-    safe = zim_path.replace("\\", "/").lstrip("/")
-    return _BASE / archive_id / "html" / safe
+    safe = _safe_zim_path(zim_path)
+    return _BASE / _safe_archive_id(archive_id) / "html" / safe
 
 
 def _media_path(archive_id: str, zim_path: str) -> Path:
     """Map a ZIM asset path to its on-disk media cache path."""
-    safe = zim_path.replace("\\", "/").lstrip("/")
-    return _BASE / archive_id / "media" / safe
+    safe = _safe_zim_path(zim_path)
+    return _BASE / _safe_archive_id(archive_id) / "media" / safe
 
 
 def _meta_path(archive_id: str) -> Path:
-    return _BASE / archive_id / "meta.json"
+    return _BASE / _safe_archive_id(archive_id) / "meta.json"
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +225,7 @@ class ExtractorService:
                     db_local.commit()
 
             except Exception as exc:
-                print(f"[Extractor] Error for {archive_id}: {exc}")
+                logger.warning("Extraction error for %s: %s", archive_id, exc)
                 try:
                     arch = db_local.query(Archive).filter(
                         Archive.id == archive_id
@@ -228,7 +260,7 @@ class ExtractorService:
         """Remove all extracted files for an archive (e.g. on archive delete)."""
         import shutil
 
-        target = _BASE / archive_id
+        target = _BASE / _safe_archive_id(archive_id)
         if target.exists():
             try:
                 shutil.rmtree(target)

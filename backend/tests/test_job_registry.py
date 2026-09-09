@@ -117,6 +117,31 @@ def test_get_all_active_jobs(db_session):
     assert active[0].id == j1.id
 
 
+def test_pause_cancel_work_on_indexing_status(db_session):
+    """pause/cancel must also match the live 'indexing' status a worker uses."""
+    archive = Archive(id="a9", name="test.zim", path="/tmp/test9.zim", size_bytes=100, article_count=0)
+    db_session.add(archive)
+    db_session.commit()
+
+    job = job_registry.create_job(db_session, "a9")
+    job_registry.update_job_status(db_session, job.id, "indexing", progress=42)
+
+    # A paused or cancelled "indexing" job must be recognised as active.
+    assert job_registry.get_all_active_jobs(db_session)[0].id == job.id
+
+    paused = job_registry.pause_job(db_session, "a9")
+    assert paused is not None and paused.status == "paused"
+
+    job_registry.update_job_status(db_session, job.id, "indexing", progress=42)
+    cancelled = job_registry.cancel_job(db_session, "a9")
+    assert cancelled is not None and cancelled.status == "cancelled"
+
+    # A still-active "indexing" job blocks a fresh start.
+    fresh = job_registry.create_job(db_session, "a9")
+    job_registry.update_job_status(db_session, fresh.id, "indexing")
+    assert job_registry.start_job("a9", worker_fn=lambda *_: None, db_session=db_session) is None
+
+
 def test_get_status_no_job(db_session):
     """get_status returns None when no job exists."""
     status = job_registry.get_status(db_session, "nonexistent")
