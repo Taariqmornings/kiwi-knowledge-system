@@ -1,6 +1,7 @@
 import os
 import hashlib
 import logging
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
@@ -71,14 +72,18 @@ class ArchiveService:
     @staticmethod
     def _is_safe_path(target: str, allow_list: Optional[List[str]] = None) -> bool:
         """Validate that a path doesn't contain path traversal attempts."""
-        # Check for null bytes
-        if "\0" in target:
+        if not target or "\0" in target:
             return False
-        # Reject relative paths
-        if not os.path.isabs(target):
+        # Reject relative paths. Absolute-path detection is platform-neutral
+        # (accepts both POSIX `/…` and Windows `C:/…` forms) so the behaviour —
+        # and the test suite — is identical on every OS.
+        normalized = target.replace("\\", "/")
+        is_absolute = normalized.startswith("/") or bool(
+            re.match(r"^[A-Za-z]:/", normalized)
+        )
+        if not is_absolute:
             return False
         # Block path traversal components
-        normalized = target.replace("\\", "/")
         parts = normalized.split("/")
         if ".." in parts:
             return False
