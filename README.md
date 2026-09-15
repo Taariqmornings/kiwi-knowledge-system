@@ -1,6 +1,6 @@
 # Kiwi — Offline Knowledge Base System
 
-> Index compressed ZIM archives, search hundreds of thousands of articles in under 100 ms, and chat with your local knowledge base using a private on-device AI — all with zero internet dependency.
+> Index compressed ZIM archives, search hundreds of thousands of articles, and chat with your local knowledge base using a private on-device AI — all with zero internet dependency.
 
 Created and maintained by **[Taariq Ebrahim](https://github.com/Taariqmornings)**.
 
